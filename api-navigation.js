@@ -452,7 +452,12 @@ class ApiNavigation extends AmfHelperMixin(LitElement) {
        * This is not always recommended to use this option as some complex APIs
        * may render this component difficult to understand.
        */
-      allowPaths: Boolean
+      allowPaths: Boolean,
+      /**
+       * If this value is set, then the navigation component will sort the list
+       * of endpoints based on the `path` value of the endpoint
+       */
+      sortEndpoints: Boolean
     };
   }
 
@@ -776,6 +781,9 @@ class ApiNavigation extends AmfHelperMixin(LitElement) {
     const endpoint = this._ensureArray(data[ekey]);
     if (endpoint) {
       endpoint.forEach((item) => this._appendModelItem(item, target));
+    }
+    if (this.sortEndpoints) {
+      target.endpoints.sort((a, b) => a.path < b.path ? -1 : 1 );
     }
     const dkey = this._getAmfKey(this.ns.schema.doc);
     const documentation = this._ensureArray(data[dkey]);

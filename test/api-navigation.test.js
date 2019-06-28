@@ -254,6 +254,10 @@ describe('<api-navigation>', () => {
       assert.equal(element.selected, 'test2');
       assert.equal(element.selectedType, 'endpoint');
     });
+
+    it('sortEndpoints is not true by default', () => {
+      assert.isNotTrue(element.sortEndpoints);
+    });
   });
 
   describe('Navigation events`', () => {
