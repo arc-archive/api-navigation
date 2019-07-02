@@ -18,6 +18,10 @@ describe('<api-navigation>', () => {
     return (await fixture(`<api-navigation summary selected="test1"></api-navigation>`));
   }
 
+  async function arrangedFixture() {
+    return (await fixture(`<api-navigation rearrangeEndpoints="true"></api-navigation>`));
+  }
+
   describe('Super basics - without model', () => {
     let element;
 
@@ -262,6 +266,7 @@ describe('<api-navigation>', () => {
 
   describe('`Rearranging endpoints`', () => {
     let element;
+    let model;
 
     const dataSet = [
       { path: '/transactions/:txId' },
@@ -277,16 +282,52 @@ describe('<api-navigation>', () => {
       { path: "/billing" },
       { path: "/accounts" },
       { path: "/accounts/:accountId" }
-  ];
+    ];
 
     beforeEach(async () => {
-      element = await preselectedFixture();
+      element = await arrangedFixture();
       await nextFrame();
     });
 
     it('should rearrange endpoints', () => {
       const rearranged = element._rearrangeEndpoints(dataSet);
       assert.sameDeepOrderedMembers(rearranged, expected)
+    });
+
+    it('should have endpoints rearranged', () => {
+      model = [{
+        id: 'test7',
+        label: 'test7',
+        path: '/transactions/:txId',
+        methods: [{
+          id: 'method8',
+          method: 'GET'
+        }]
+      }, {
+        id: 'test9',
+        label: 'test9',
+        path: '/billing',
+        methods: [{
+          id: 'method10',
+          method: 'GET'
+        }, {
+          id: 'method11',
+          method: 'POST'
+        }]
+      }, {
+        id: 'test8',
+        label: 'test8',
+        path: '/transactions',
+        methods: [{
+          id: 'method8',
+          method: 'GET'
+        }]
+      }];
+      element._endpoints = model;
+
+      // console.log('endpoints:', element._endpoints);
+
+      assert.equal(element._endpoints[0].id, 'test8');
     });
   });
 
