@@ -255,8 +255,38 @@ describe('<api-navigation>', () => {
       assert.equal(element.selectedType, 'endpoint');
     });
 
-    it('sortEndpoints is not true by default', () => {
-      assert.isNotTrue(element.sortEndpoints);
+    it('rearrangeEndpoints is not true by default', () => {
+      assert.isNotTrue(element.rearrangeEndpoints);
+    });
+  });
+
+  describe('`Rearranging endpoints`', () => {
+    let element;
+
+    const dataSet = [
+      { path: '/transactions/:txId' },
+      { path: '/billing' },
+      { path: '/accounts/:accountId' },
+      { path: '/accounts' },
+      { path: '/transactions' },
+    ];
+
+    const expected = [
+      { path: "/transactions" },
+      { path: "/transactions/:txId" },
+      { path: "/billing" },
+      { path: "/accounts" },
+      { path: "/accounts/:accountId" }
+  ];
+
+    beforeEach(async () => {
+      element = await preselectedFixture();
+      await nextFrame();
+    });
+
+    it('should rearrange endpoints', () => {
+      const rearranged = element._rearrangeEndpoints(dataSet);
+      assert.sameDeepOrderedMembers(rearranged, expected)
     });
   });
 
