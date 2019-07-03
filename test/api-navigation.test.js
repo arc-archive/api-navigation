@@ -19,7 +19,7 @@ describe('<api-navigation>', () => {
   }
 
   async function arrangedFixture() {
-    return (await fixture(`<api-navigation rearrangeEndpoints="true"></api-navigation>`));
+    return (await fixture(`<api-navigation rearrange-endpoints="true"></api-navigation>`));
   }
 
   describe('Super basics - without model', () => {
@@ -287,7 +287,6 @@ describe('<api-navigation>', () => {
     beforeEach(async () => {
       element = await arrangedFixture();
       amf = await AmfLoader.load(false, 'rearrange-api');
-      await nextFrame();
     });
 
     it('should rearrange endpoints', () => {

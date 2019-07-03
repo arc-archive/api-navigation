@@ -458,7 +458,7 @@ class ApiNavigation extends AmfHelperMixin(LitElement) {
        * of endpoints based on the `path` value of the endpoint, keeping the order
        * of which endpoint was first in the list, relative to each other
        */
-      rearrangeEndpoints: Boolean
+      'rearrange-endpoints': Boolean
     };
   }
 
@@ -783,7 +783,7 @@ class ApiNavigation extends AmfHelperMixin(LitElement) {
     if (endpoint) {
       endpoint.forEach((item) => this._appendModelItem(item, target));
     }
-    if (this.rearrangeEndpoints) {
+    if (this['rearrange-endpoints']) {
       target.endpoints = this._rearrangeEndpoints(target.endpoints);
     }
     const dkey = this._getAmfKey(this.ns.schema.doc);
@@ -806,19 +806,19 @@ class ApiNavigation extends AmfHelperMixin(LitElement) {
         return unsortedArray;
       }
       const middle = Math.floor(unsortedArray.length / 2);
-    
+
       const left = unsortedArray.slice(0, middle);
       const right = unsortedArray.slice(middle);
-    
+
       return merge(
         mergeSort(left), mergeSort(right)
       );
     }
-    
+
     function merge(left, right) {
       const resultArray = [];
       let leftIndex = 0, rightIndex = 0;
-    
+
       while (leftIndex < left.length && rightIndex < right.length) {
         if (left[leftIndex].path < right[rightIndex].path) {
           resultArray.push(left[leftIndex]);
@@ -828,7 +828,7 @@ class ApiNavigation extends AmfHelperMixin(LitElement) {
           rightIndex++;
         }
       }
-    
+
       return resultArray
         .concat(left.slice(leftIndex))
         .concat(right.slice(rightIndex));
@@ -846,14 +846,14 @@ class ApiNavigation extends AmfHelperMixin(LitElement) {
    * endpoint is first found at, so that re-arranging the
    * endpoints keeps them in the same relative order to each
    * other
-   * 
+   *
    * @param {Array} endpoints
    */
   _createListMap(endpoints) {
     const map = {};
 
     const getPathInit = (endpoint) => endpoint.path.split("/")[1];
-    
+
     endpoints.forEach(endpoint => {
       const pathInit = getPathInit(endpoint);
       if (map[pathInit]) {
