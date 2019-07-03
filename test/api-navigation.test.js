@@ -266,7 +266,7 @@ describe('<api-navigation>', () => {
 
   describe('`Rearranging endpoints`', () => {
     let element;
-    let model;
+    let amf;
 
     const dataSet = [
       { path: '/transactions/:txId' },
@@ -286,6 +286,7 @@ describe('<api-navigation>', () => {
 
     beforeEach(async () => {
       element = await arrangedFixture();
+      amf = await AmfLoader.load(false, 'rearrange-api');
       await nextFrame();
     });
 
@@ -295,39 +296,9 @@ describe('<api-navigation>', () => {
     });
 
     it('should have endpoints rearranged', () => {
-      model = [{
-        id: 'test7',
-        label: 'test7',
-        path: '/transactions/:txId',
-        methods: [{
-          id: 'method8',
-          method: 'GET'
-        }]
-      }, {
-        id: 'test9',
-        label: 'test9',
-        path: '/billing',
-        methods: [{
-          id: 'method10',
-          method: 'GET'
-        }, {
-          id: 'method11',
-          method: 'POST'
-        }]
-      }, {
-        id: 'test8',
-        label: 'test8',
-        path: '/transactions',
-        methods: [{
-          id: 'method8',
-          method: 'GET'
-        }]
-      }];
-      element._endpoints = model;
+      element.amf = amf;
 
-      // console.log('endpoints:', element._endpoints);
-
-      assert.equal(element._endpoints[0].id, 'test8');
+      element._endpoints.forEach((endpoint, i) => assert.equal(endpoint.path, expected[i].path));
     });
   });
 

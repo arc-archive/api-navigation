@@ -524,7 +524,7 @@ class ApiNavigation extends AmfHelperMixin(LitElement) {
   }
 
   set _endpoints(value) {
-    this._setProperty('_endpoints', this.rearrangeEndpoints ? this._rearrangeEndpoints(value) : value);
+    this._setProperty('_endpoints', value);
     this.hasEndpoints = !!(value && value.length);
   }
 
@@ -782,6 +782,9 @@ class ApiNavigation extends AmfHelperMixin(LitElement) {
     const endpoint = this._ensureArray(data[ekey]);
     if (endpoint) {
       endpoint.forEach((item) => this._appendModelItem(item, target));
+    }
+    if (this.rearrangeEndpoints) {
+      target.endpoints = this._rearrangeEndpoints(target.endpoints);
     }
     const dkey = this._getAmfKey(this.ns.schema.doc);
     const documentation = this._ensureArray(data[dkey]);
