@@ -458,7 +458,7 @@ class ApiNavigation extends AmfHelperMixin(LitElement) {
        * of endpoints based on the `path` value of the endpoint, keeping the order
        * of which endpoint was first in the list, relative to each other
        */
-      'rearrange-endpoints': Boolean
+      rearrangeEndpoints: Boolean
     };
   }
 
@@ -783,7 +783,7 @@ class ApiNavigation extends AmfHelperMixin(LitElement) {
     if (endpoint) {
       endpoint.forEach((item) => this._appendModelItem(item, target));
     }
-    if (this['rearrange-endpoints']) {
+    if (this.rearrangeEndpoints) {
       target.endpoints = this._rearrangeEndpoints(target.endpoints);
     }
     const dkey = this._getAmfKey(this.ns.schema.doc);

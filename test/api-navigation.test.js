@@ -19,7 +19,7 @@ describe('<api-navigation>', () => {
   }
 
   async function arrangedFixture() {
-    return (await fixture(`<api-navigation rearrange-endpoints="true"></api-navigation>`));
+    return (await fixture(`<api-navigation rearrangeendpoints="true"></api-navigation>`));
   }
 
   describe('Super basics - without model', () => {
