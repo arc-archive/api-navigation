@@ -863,7 +863,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
    */
   _rearrangeEndpoints(endpoints) {
     if (!endpoints) {
-      return [];
+      return null;
     }
 
     const merge = (left, right) => {
