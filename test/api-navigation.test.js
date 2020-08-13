@@ -1145,39 +1145,6 @@ describe('<api-navigation>', () => {
     });
   });
 
-  describe('_getLexicalOrder', () => {
-    let element;
-    beforeEach(async () => {
-      element = await basicFixture();
-      await nextFrame();
-    });
-
-    it('returns first appearance in lexical order', async () => {
-      const model = {
-        'http://a.ml/vocabularies/document-source-maps#sources': {
-          'http://a.ml/vocabularies/document-source-maps#lexical': [
-            '[(11,4)-(12,0)]',
-            '[(12,4)-(17,0)]',
-            '[(10,2)-(17,0)]',
-          ],
-        },
-      };
-      assert.equal(element._getLexicalOrder(model), 11);
-    });
-
-    it('returns undefined when no sources', async () => {
-      const model = {};
-      assert.isUndefined(element._getLexicalOrder(model));
-    });
-
-    it('returns undefined when no lexical', async () => {
-      const model = {
-        'http://a.ml/vocabularies/document-source-maps#': {},
-      };
-      assert.isUndefined(element._getLexicalOrder(model));
-    });
-  });
-
   describe('_sortByOrder', () => {
     let element;
     beforeEach(async () => {
