@@ -41,7 +41,7 @@
     "@anypoint-web-components/anypoint-dropdown-menu": "^0.1.14",
     "@anypoint-web-components/anypoint-item": "^1.0.5",
     "@anypoint-web-components/anypoint-listbox": "^1.0.4",
-    "@api-components/api-model-generator": "^0.2.8",
+    "@api-components/api-model-generator": "^0.2.9",
     "@open-wc/eslint-config": "^2.0.0",
     "@open-wc/testing": "^2.5.16",
     "@open-wc/testing-karma": "^3.3.20",
