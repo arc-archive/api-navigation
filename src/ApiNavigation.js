@@ -933,7 +933,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     const parts = tmpPath.split('/');
     let indent = 0;
     target._basePaths[target._basePaths.length] = path;
-    if (parts.length > 1) {
+    if (parts.length > 1 && !this.renderFullPaths) {
       const lowerParts = parts.slice(0, parts.length - 1);
       if (lowerParts.length) {
         for (let i = lowerParts.length - 1; i >= 0; i--) {
@@ -952,7 +952,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     }
     if (!name) {
       result.renderPath = false;
-      if (indent > 0 && !this.renderFullPaths) {
+      if (indent > 0) {
         try {
           name = computePathName(path, parts, indent, target._basePaths);
         } catch (_) {
@@ -970,7 +970,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     const methods = operations.map(op => this._createOperationModel(op));
     result.label = String(name);
     result.id = id;
-    result.indent = this.renderFullPaths ? 0 : indent;
+    result.indent = indent;
     result.methods = methods;
     target.endpoints.push(result);
   }
