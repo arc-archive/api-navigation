@@ -1271,6 +1271,26 @@ describe('<api-navigation>', () => {
         });
       });
     });
+
+    describe('renderFullPaths', () => {
+      let amf;
+      let element;
+
+      beforeEach(async () => {
+        amf = await AmfLoader.load(item[1]);
+        element = await basicFixture();
+        element.amf = amf;
+        await nextFrame();
+      });
+
+      it('renders full paths when renderFullPaths is set', async () => {
+        element.renderFullPaths = true;
+        element.endpointsOpened = true;
+        await aTimeout(50);
+        const renderedPath = element.shadowRoot.querySelectorAll('.list-item.endpoint')[2].innerText;
+        assert.equal(renderedPath, '/files/{fileId}/copy');
+      });
+    });
   });
 
   describe('a11y', () => {
