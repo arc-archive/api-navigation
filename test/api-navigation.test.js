@@ -41,9 +41,9 @@ describe('<api-navigation>', () => {
   /**
    * @returns {Promise<ApiNavigation>}
    */
-  async function arrangedFixture() {
+  async function sortedFixture() {
     return fixture(
-      html`<api-navigation rearrangeEndpoints></api-navigation>`
+      html`<api-navigation sortEndpoints></api-navigation>`
     );
   }
 
@@ -381,12 +381,12 @@ describe('<api-navigation>', () => {
       assert.equal(element.selectedType, 'endpoint');
     });
 
-    it('rearrangeEndpoints is not true by default', () => {
-      assert.isNotTrue(element.rearrangeEndpoints);
+    it('sortEndpoints is not true by default', () => {
+      assert.isNotTrue(element.sortEndpoints);
     });
   });
 
-  describe('Rearranging endpoint', () => {
+  describe('Sorting endpoints', () => {
     let element;
     let amf;
 
@@ -401,24 +401,24 @@ describe('<api-navigation>', () => {
     ];
 
     const expected = [
-      { [pathKey]: '/transactions' },
-      { [pathKey]: '/transactions/:txId' },
-      { [pathKey]: '/billing' },
       { [pathKey]: '/accounts' },
       { [pathKey]: '/accounts/:accountId' },
+      { [pathKey]: '/billing' },
+      { [pathKey]: '/transactions' },
+      { [pathKey]: '/transactions/:txId' },
     ];
 
     beforeEach(async () => {
-      element = await arrangedFixture();
+      element = await sortedFixture();
       amf = await AmfLoader.load(false, 'rearrange-api');
     });
 
-    it('should rearrange endpoints', () => {
-      const rearranged = element._rearrangeEndpoints(dataSet);
-      assert.sameDeepOrderedMembers(rearranged, expected);
+    it('should sort endpoints', () => {
+      const sorted = element._sortEndpoints(dataSet);
+      assert.sameDeepOrderedMembers(sorted, expected);
     });
 
-    it('should have endpoints rearranged', () => {
+    it('should have endpoints sorted', () => {
       element.amf = amf;
 
       element._endpoints.forEach((endpoint, i) =>
@@ -1120,7 +1120,7 @@ describe('<api-navigation>', () => {
 
       beforeEach(async () => {
         element = await operationsOpenedFixture(amf, true);
-        await aTimeout()
+        await aTimeout(0);
       });
 
       it('should expand all operations when operationsOpened', () => {
