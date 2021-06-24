@@ -441,6 +441,20 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._items = null;
   }
 
+  set sortEndpoints(value) {
+    const old = this.__sortEndpoints;
+    if (old === value) {
+      return;
+    }
+    this.__sortEndpoints = value;
+    this.requestUpdate('sortEndpoints', old);
+    this.__amfChanged(this.amf);
+  }
+
+  get sortEndpoints() {
+    return this.__sortEndpoints;
+  }
+
   constructor() {
     super();
 
