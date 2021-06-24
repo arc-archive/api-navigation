@@ -257,6 +257,11 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
        * No overview as a separated element. Overview can be seen by clicking the endpoint label.
        */
       noOverview: { type: Boolean },
+      /**
+       * When set, avoiids truncating and indentation of endpoint paths.
+       * Instead, the full path for each endpoint will be rendered.
+       */
+      renderFullPaths: { type: Boolean },
     };
   }
 
@@ -455,6 +460,20 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     return this.__sortEndpoints;
   }
 
+  set renderFullPaths(value) {
+    const old = this._renderFullPaths;
+    if (old === value) {
+      return;
+    }
+    this._renderFullPaths = value;
+    this.requestUpdate('renderFullPaths', old);
+    this.__amfChanged(this.amf);
+  }
+
+  get renderFullPaths() {
+    return this._renderFullPaths;
+  }
+
   constructor() {
     super();
 
@@ -471,6 +490,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._openedOperations = [];
     this._updatedOpenedOperations = true;
     this.noOverview = false;
+    this.renderFullPaths = false;
 
     this._navigationChangeHandler = this._navigationChangeHandler.bind(this);
     this._focusHandler = this._focusHandler.bind(this);
@@ -932,7 +952,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     }
     if (!name) {
       result.renderPath = false;
-      if (indent > 0) {
+      if (indent > 0 && !this.renderFullPaths) {
         try {
           name = computePathName(path, parts, indent, target._basePaths);
         } catch (_) {
@@ -950,7 +970,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     const methods = operations.map(op => this._createOperationModel(op));
     result.label = String(name);
     result.id = id;
-    result.indent = indent;
+    result.indent = this.renderFullPaths ? 0 : indent;
     result.methods = methods;
     target.endpoints.push(result);
   }

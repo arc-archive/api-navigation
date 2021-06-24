@@ -228,6 +228,13 @@ export declare class ApiNavigation {
   noOverview: boolean;
 
   /**
+   * When set, avoiids truncating and indentation of endpoint paths.
+   * Instead, the full path for each endpoint will be rendered.
+   * @attribute
+   */
+  renderFullPaths: boolean;
+
+  /**
    * true when `_docs` property is set with values
    */
   get hasDocs(): boolean;
