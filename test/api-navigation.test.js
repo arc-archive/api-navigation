@@ -1287,8 +1287,15 @@ describe('<api-navigation>', () => {
         element.renderFullPaths = true;
         element.endpointsOpened = true;
         await aTimeout(50);
-        const renderedPath = element.shadowRoot.querySelectorAll('.list-item.endpoint')[2].innerText;
+        const renderedPath = element.shadowRoot.querySelectorAll('.list-item.endpoint')[2].innerText.split('\n').join('');
         assert.equal(renderedPath, '/files/{fileId}/copy');
+      });
+
+      it('does not indent any endpoint', async () => {
+        element.renderFullPaths = true;
+        element.endpointsOpened = true;
+        await aTimeout(50);
+        element._endpoints.forEach(endpoint => assert.equal(endpoint.indent, 0));
       });
     });
   });
