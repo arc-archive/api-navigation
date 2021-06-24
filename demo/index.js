@@ -6,13 +6,13 @@ export class DemoPage extends NavDemoPage {
   constructor() {
     super();
     this.initObservableProperties([
-      'summary', 'noink', 'allowPaths', 'rearrangeEndpoints', 'operationsOpened', 'noOverview'
+      'summary', 'noink', 'allowPaths', 'sortEndpoints', 'operationsOpened', 'noOverview'
     ]);
     this.compatibility = false;
     this.summary = true;
     this.noink = false;
     this.allowPaths = false;
-    this.rearrangeEndpoints = false;
+    this.sortEndpoints = false;
     this.operationsOpened = true;
     this.noOverview = false;
   }
@@ -26,7 +26,7 @@ export class DemoPage extends NavDemoPage {
       summary,
       noink,
       allowPaths,
-      rearrangeEndpoints,
+      sortEndpoints,
       operationsOpened,
       noOverview,
     } = this;
@@ -50,7 +50,7 @@ export class DemoPage extends NavDemoPage {
           ?summary="${summary}"
           ?noink="${noink}"
           ?allowPaths="${allowPaths}"
-          ?rearrangeEndpoints="${rearrangeEndpoints}"
+          ?sortEndpoints="${sortEndpoints}"
           ?compatibility="${compatibility}"
           ?noOverview="${noOverview}"
           slot="content"
@@ -87,10 +87,10 @@ export class DemoPage extends NavDemoPage {
         <anypoint-checkbox
           aria-describedby="mainOptionsLabel"
           slot="options"
-          name="rearrangeEndpoints"
+          name="sortEndpoints"
           @change="${this._toggleMainOption}"
         >
-          Rearrange endpoints
+          Sort endpoints
         </anypoint-checkbox>
         <anypoint-checkbox
           aria-describedby="mainOptionsLabel"
