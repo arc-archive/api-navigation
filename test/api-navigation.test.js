@@ -1287,7 +1287,7 @@ describe('<api-navigation>', () => {
         element.renderFullPaths = true;
         element.endpointsOpened = true;
         await aTimeout(50);
-        const renderedPath = element.shadowRoot.querySelectorAll('.list-item.endpoint')[2].innerText.split('\n').join('');
+        const renderedPath = element.shadowRoot.querySelectorAll('.list-item.endpoint')[2].textContent.split('\n').join('').trim();
         assert.equal(renderedPath, '/files/{fileId}/copy');
       });
 
