@@ -425,6 +425,32 @@ describe('<api-navigation>', () => {
         assert.equal(endpoint.path, expected[i][pathKey])
       );
     });
+
+
+    it('should sort after setting sortEndpoints property', async () => {
+      element = await modelFixture(amf);
+      await nextFrame();
+      let elementEndpointPaths = element._endpoints.map(endpoint => endpoint.path);
+      const expectedPaths = expected.map(endpoint => endpoint[pathKey]);
+      assert.notSameDeepOrderedMembers(elementEndpointPaths, expectedPaths);
+      element.sortEndpoints = true;
+      await nextFrame();
+      elementEndpointPaths = element._endpoints.map(endpoint => endpoint.path);
+      assert.sameDeepOrderedMembers(elementEndpointPaths, expectedPaths);
+    });
+
+    it('should unsort after toggling sortEndpoints property off', async () => {
+      element = await modelFixture(amf);
+      element.sortEndpoints = true;
+      await nextFrame();
+      let elementEndpointPaths = element._endpoints.map(endpoint => endpoint.path);
+      const expectedPaths = expected.map(endpoint => endpoint[pathKey]);
+      assert.sameDeepOrderedMembers(elementEndpointPaths, expectedPaths);
+      element.sortEndpoints = false;
+      await nextFrame();
+      elementEndpointPaths = element._endpoints.map(endpoint => endpoint.path);
+      assert.notSameDeepOrderedMembers(elementEndpointPaths, expectedPaths);
+    });
   });
 
   describe('Navigation events', () => {
