@@ -238,10 +238,9 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       allowPaths: { type: Boolean },
       /**
        * If this value is set, then the navigation component will sort the list
-       * of endpoints based on the `path` value of the endpoint, keeping the order
-       * of which endpoint was first in the list, relative to each other
+       * of endpoints alphabetically based on the `path` value of the endpoint
        */
-      rearrangeEndpoints: { type: Boolean },
+      sortEndpoints: { type: Boolean },
       /**
        * Enables compatibility with Anypoint components.
        */
@@ -451,7 +450,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this.noink = false;
     this.allowPaths = false;
     this.compatibility = false;
-    this.rearrangeEndpoints = false;
+    this.sortEndpoints = false;
     this.indentSize = 8;
     this._selectedItem = null;
     this.aware = null;
@@ -699,8 +698,8 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     }
     const eKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.endpoint);
     let endpoint = this._ensureArray(data[eKey]);
-    if (this.rearrangeEndpoints) {
-      endpoint = this._rearrangeEndpoints(endpoint);
+    if (this.sortEndpoints) {
+      endpoint = this._sortEndpoints(endpoint);
     }
     if (endpoint) {
       endpoint.forEach(item => this._appendModelItem(item, target));
@@ -713,92 +712,29 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
   }
 
   /**
-   * Re-arrange the endpoints in relative order to each other, keeping
-   * the first endpoints to appear first, and the last endpoints to appear
-   * last
+   * Sort endpoints alphabetically based on path
    * @param {EndpointItem[]} endpoints
    * @return {EndpointItem[]}
    */
-  _rearrangeEndpoints(endpoints) {
+  _sortEndpoints(endpoints) {
     if (!endpoints) {
       return null;
     }
+    const pathKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.path);
+    return [...endpoints].sort((a,b) => {
+      const pathA = this._getValue(a, pathKey);
+      const pathB = this._getValue(b, pathKey);
 
-    const merge = (left, right) => {
-      const resultArray = [];
-      let leftIndex = 0;
-      let rightIndex = 0;
-
-      while (leftIndex < left.length && rightIndex < right.length) {
-        const leftPath = this._getValue(
-          left[leftIndex],
-          this.ns.raml.vocabularies.apiContract.path
-        );
-        const rightPath = this._getValue(
-          right[rightIndex],
-          this.ns.raml.vocabularies.apiContract.path
-        );
-        if (leftPath < rightPath) {
-          resultArray.push(left[leftIndex]);
-          leftIndex++;
-        } else {
-          resultArray.push(right[rightIndex]);
-          rightIndex++;
-        }
+      if (pathA < pathB){
+        return -1;
+      }
+      
+      if (pathA > pathB){
+        return 1;
       }
 
-      return resultArray
-        .concat(left.slice(leftIndex))
-        .concat(right.slice(rightIndex));
-    };
-
-    const mergeSort = unsortedArray => {
-      if (unsortedArray.length <= 1) {
-        return unsortedArray;
-      }
-      const middle = Math.floor(unsortedArray.length / 2);
-
-      const left = unsortedArray.slice(0, middle);
-      const right = unsortedArray.slice(middle);
-
-      return merge(mergeSort(left), mergeSort(right));
-    };
-
-    const listMap = this._createListMap(endpoints);
-
-    return Object.keys(listMap)
-      .map(key => mergeSort(listMap[key]))
-      .reduce((acc, value) => acc.concat(value), []);
-  }
-
-  /**
-   * Transforms a list of endpoints into a map that goes from
-   * string -> Object[], representing the first part of the endpoint
-   * path, and the list of endpoints that match it. The idea is
-   * to have a map for this, respecting the order each
-   * endpoint is first found at, so that re-arranging the
-   * endpoints keeps them in the same relative order to each
-   * other
-   *
-   * @param {EndpointItem[]} endpoints
-   * @return {object}
-   */
-  _createListMap(endpoints) {
-    const map = {};
-    const getPathInit = endpoint =>
-      /** @type string */ (this._getValue(
-        endpoint,
-        this.ns.raml.vocabularies.apiContract.path
-      )).split('/')[1];
-    endpoints.forEach(endpoint => {
-      const pathInit = getPathInit(endpoint);
-      if (map[pathInit]) {
-        map[pathInit].push(endpoint);
-      } else {
-        map[pathInit] = [endpoint];
-      }
+      return 0;
     });
-    return map;
   }
 
   /**
