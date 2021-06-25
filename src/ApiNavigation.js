@@ -240,7 +240,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
        * If this value is set, then the navigation component will sort the list
        * of endpoints alphabetically based on the `path` value of the endpoint
        */
-      sortEndpoints: { type: Boolean },
+      rearrangeEndpoints: { type: Boolean },
       /**
        * Enables compatibility with Anypoint components.
        */
@@ -446,18 +446,18 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._items = null;
   }
 
-  set sortEndpoints(value) {
-    const old = this.__sortEndpoints;
+  set rearrangeEndpoints(value) {
+    const old = this.__rearrangeEndpoints;
     if (old === value) {
       return;
     }
-    this.__sortEndpoints = value;
-    this.requestUpdate('sortEndpoints', old);
+    this.__rearrangeEndpoints = value;
+    this.requestUpdate('rearrangeEndpoints', old);
     this.__amfChanged(this.amf);
   }
 
-  get sortEndpoints() {
-    return this.__sortEndpoints;
+  get rearrangeEndpoints() {
+    return this.__rearrangeEndpoints;
   }
 
   set renderFullPaths(value) {
@@ -483,7 +483,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this.noink = false;
     this.allowPaths = false;
     this.compatibility = false;
-    this.sortEndpoints = false;
+    this.rearrangeEndpoints = false;
     this.indentSize = 8;
     this._selectedItem = null;
     this.aware = null;
@@ -732,8 +732,8 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     }
     const eKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.endpoint);
     let endpoint = this._ensureArray(data[eKey]);
-    if (this.sortEndpoints) {
-      endpoint = this._sortEndpoints(endpoint);
+    if (this.rearrangeEndpoints) {
+      endpoint = this._rearrangeEndpoints(endpoint);
     }
     if (endpoint) {
       endpoint.forEach(item => this._appendModelItem(item, target));
@@ -750,7 +750,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
    * @param {EndpointItem[]} endpoints
    * @return {EndpointItem[]}
    */
-  _sortEndpoints(endpoints) {
+  _rearrangeEndpoints(endpoints) {
     if (!endpoints) {
       return null;
     }

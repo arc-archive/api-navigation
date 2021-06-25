@@ -207,7 +207,7 @@ export declare class ApiNavigation {
    * of which endpoint was first in the list, relative to each other
    * @attribute
    */
-  sortEndpoints: boolean;
+  rearrangeEndpoints: boolean;
 
   /**
    * Enables compatibility with Anypoint components.
@@ -332,7 +332,7 @@ export declare class ApiNavigation {
   /**
    * Sort endpoints alphabetically based on path
    */
-  _sortEndpoints(endpoints: EndpointItem[]): EndpointItem[];
+  _rearrangeEndpoints(endpoints: EndpointItem[]): EndpointItem[];
 
   /**
    * Transforms a list of endpoints into a map that goes from

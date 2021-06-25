@@ -43,7 +43,7 @@ describe('<api-navigation>', () => {
    */
   async function sortedFixture() {
     return fixture(
-      html`<api-navigation sortEndpoints></api-navigation>`
+      html`<api-navigation rearrangeEndpoints></api-navigation>`
     );
   }
 
@@ -381,8 +381,8 @@ describe('<api-navigation>', () => {
       assert.equal(element.selectedType, 'endpoint');
     });
 
-    it('sortEndpoints is not true by default', () => {
-      assert.isNotTrue(element.sortEndpoints);
+    it('rearrangeEndpoints is not true by default', () => {
+      assert.isNotTrue(element.rearrangeEndpoints);
     });
   });
 
@@ -414,7 +414,7 @@ describe('<api-navigation>', () => {
     });
 
     it('should sort endpoints', () => {
-      const sorted = element._sortEndpoints(dataSet);
+      const sorted = element._rearrangeEndpoints(dataSet);
       assert.sameDeepOrderedMembers(sorted, expected);
     });
 
@@ -427,26 +427,26 @@ describe('<api-navigation>', () => {
     });
 
 
-    it('should sort after setting sortEndpoints property', async () => {
+    it('should sort after setting rearrangeEndpoints property', async () => {
       element = await modelFixture(amf);
       await nextFrame();
       let elementEndpointPaths = element._endpoints.map(endpoint => endpoint.path);
       const expectedPaths = expected.map(endpoint => endpoint[pathKey]);
       assert.notSameDeepOrderedMembers(elementEndpointPaths, expectedPaths);
-      element.sortEndpoints = true;
+      element.rearrangeEndpoints = true;
       await nextFrame();
       elementEndpointPaths = element._endpoints.map(endpoint => endpoint.path);
       assert.sameDeepOrderedMembers(elementEndpointPaths, expectedPaths);
     });
 
-    it('should unsort after toggling sortEndpoints property off', async () => {
+    it('should unsort after toggling rearrangeEndpoints property off', async () => {
       element = await modelFixture(amf);
-      element.sortEndpoints = true;
+      element.rearrangeEndpoints = true;
       await nextFrame();
       let elementEndpointPaths = element._endpoints.map(endpoint => endpoint.path);
       const expectedPaths = expected.map(endpoint => endpoint[pathKey]);
       assert.sameDeepOrderedMembers(elementEndpointPaths, expectedPaths);
-      element.sortEndpoints = false;
+      element.rearrangeEndpoints = false;
       await nextFrame();
       elementEndpointPaths = element._endpoints.map(endpoint => endpoint.path);
       assert.notSameDeepOrderedMembers(elementEndpointPaths, expectedPaths);
