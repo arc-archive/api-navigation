@@ -1123,6 +1123,9 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       if (!this._openedOperations.includes(id)) {
         this.toggleOperations(id)
       }
+      if (collapse && !this._openedOperations.includes(collapse.dataset.apiId)) {
+        this.toggleOperations(collapse.dataset.apiId);
+      }
     } else if (collapse && !collapse.opened) {
       collapse.opened = true;
     }
