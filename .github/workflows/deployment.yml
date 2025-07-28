@@ -32,9 +32,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
       - name: Install dependencies
-        run: npm i
+        run: npm install
       - name: Run tests
-        run: npm run test
+        run: npm test
   test_win:
     name: "Windows"
     runs-on: windows-latest
@@ -51,9 +51,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
       - name: Install dependencies
-        run: npm i
+        run: npm install
       - name: Run tests
-        run: npm run test
+        run: npm test
   tag:
     name: "Publishing release"
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
