@@ -48,7 +48,7 @@
     "@open-wc/testing": "^2.5.32",
     "@polymer/iron-test-helpers": "^3.0.0",
     "@web/dev-server": "^0.1.25",
-    "@web/test-runner": "^0.13.18",
+    "@web/test-runner": "^0.20.2",
     "@web/test-runner-playwright": "^0.8.8",
     "eslint": "^8.0.0",
     "eslint-config-prettier": "^8.3.0",
