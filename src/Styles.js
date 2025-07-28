@@ -190,6 +190,22 @@ export default css`
     white-space: nowrap;
   }
 
+  .method-label-with-icon {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .method-icon {
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
+    padding-left: 3px;
+    padding-bottom: 2px;
+    padding-left: 4px;
+  }
+
+
   .list-item.selected .method-label[data-method] {
     color: var(--method-display-selected-color, #fff);
   }
