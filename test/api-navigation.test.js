@@ -386,6 +386,52 @@ describe('<api-navigation>', () => {
     });
   });
 
+  describe('Endpoints rendering with agents', () => {
+    let element = /** @type ApiNavigation */ (null);
+    let amf;
+
+    before(async () => {
+      amf = await AmfLoader.load(false,'agents-api');
+    });
+
+    beforeEach(async () => {
+      element = await basicFixture();
+      element.amf = amf;
+      await aTimeout(0);
+    });
+
+
+    it('renders endpoint name', () => {
+      const node = element.shadowRoot.querySelectorAll('.endpoint')[1].querySelector('.endpoint-name');
+      assert.dom.equal(
+        node,
+        `<div class="endpoint-name">
+          /reservationlookup
+        </div>`,
+        {
+          ignoreAttributes: ['data-id']
+        }
+      );
+    });
+
+    it('renders operation method', () => {
+      const node = element.shadowRoot.querySelectorAll('.operation')[3].querySelector('.method-label');
+      assert.dom.equal(
+        node,
+        `<span
+          class="method-label method-label-with-icon"
+          data-method="get"
+          >get
+          <arc-icon class="method-icon" icon="codegenie"></arc-icon>
+          </span>`,
+        {
+          ignoreAttributes: ['data-id']
+        }
+      );
+    });
+
+  });
+
   describe('Sorting endpoints', () => {
     let element;
     let amf;
