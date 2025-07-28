@@ -81,6 +81,7 @@ export class NavDemoPage extends DemoPage {
   _apiListTemplate() {
     return [
       ['demo-api', 'Demo API'],
+      ['agents-api', 'Agents API'],
       ['exchange-experience-api', 'Exchange Experience API'],
       ['oauth1-fragment', 'OAuth1 fragment'],
       ['types-list', 'Types list issue'],
