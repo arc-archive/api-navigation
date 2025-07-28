@@ -5,6 +5,7 @@ export declare interface NavigationItem {
 
 export declare interface MethodItem extends NavigationItem {
   method: string;
+  hasAgent?: boolean;
 }
 
 export declare interface EndpointItem extends NavigationItem {

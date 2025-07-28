@@ -3,10 +3,7 @@ import { LitElement, html } from 'lit-element';
 import { AmfHelperMixin } from '@api-components/amf-helper-mixin/amf-helper-mixin.js';
 import '@api-components/raml-aware/raml-aware.js';
 import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
-import {
-  keyboardArrowDown,
-  openInNew,
-} from '@advanced-rest-client/arc-icons/ArcIcons.js';
+import '@advanced-rest-client/icons/arc-icon.js';
 import '@anypoint-web-components/anypoint-collapse/anypoint-collapse.js';
 import httpMethodStyles from '@api-components/http-method-label/http-method-label-common-styles.js';
 import navStyles from './Styles.js';
@@ -1800,6 +1797,36 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
   }
 
   /**
+   * Computes whether each method in an endpoint has an associated "agent" by inspecting the AMF model.
+   * This function iterates through the methods of a given endpoint, finds the corresponding AMF operation,
+   * and checks for the presence of an agent. The `hasAgent` property is then set on the method item.
+   *
+   * @param {EndpointItem} item The endpoint item containing the methods to be processed.
+   * @returns {EndpointItem} The same endpoint item with the `hasAgent` flag updated on its methods.
+   */
+  _computeAgentsForMethods(item) {
+    const webApi = this._computeWebApi(this.amf);
+    if (!webApi) {
+      return item;
+    }
+    const operations = this._computeOperations(webApi, item.id);
+    if (!operations) {
+      return item;
+    }
+
+    item.methods.forEach(method => {
+      // Find the corresponding AMF operation for the current method item.
+      const operation = operations.find(op => op['@id'] === method.id);
+      if (operation) {
+        // Check if the operation has an agent defined in the AMF model.
+        const agent = this._computeAgents(operation);
+        method.hasAgent = !!(agent && agent.length > 0);
+      }
+    });
+    return item;
+  }
+
+  /**
    * Renders a template for endpoints and methods list.
    * @return {TemplateResult|string}
    */
@@ -1808,6 +1835,13 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       return '';
     }
     const items = this._getFilteredEndpoints();
+
+    if (items) {
+      items.forEach(item => {
+        this._computeAgentsForMethods(item);
+      });
+    }
+
     if (!items || !items.length) {
       return '';
     }
@@ -1839,7 +1873,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
           data-toggle="endpoints"
         >
           <span class="icon" aria-label="${toggleState}"
-            >${keyboardArrowDown}</span
+            ><arc-icon icon="keyboardArrowDown"></arc-icon></span
           >
         </anypoint-icon-button>
       </div>
@@ -1926,7 +1960,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
           tabindex="-1"
           @click="${this._toggleEndpointButton}"
         >
-          <span class="icon" aria-label="${ariaLabel}">${keyboardArrowDown}</span>
+          <span class="icon" aria-label="${ariaLabel}"><arc-icon icon="keyboardArrowDown"></arc-icon></span>
         </anypoint-icon-button>
       </div>
       <anypoint-collapse
@@ -1965,8 +1999,18 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       @click="${this._itemClickHandler}"
       style="${style}"
     >
-      <span class="method-label" data-method="${methodItem.method}"
-        >${methodItem.method}</span
+      <span
+        class="method-label ${methodItem.hasAgent
+          ? 'method-label-with-icon'
+          : ''}"
+        data-method="${methodItem.method}"
+        >${methodItem.method}
+        ${methodItem.hasAgent
+          ? html`<arc-icon
+              icon="codegenie"
+              class="method-icon"
+            ></arc-icon>`
+          : ''}</span
       >
       ${methodItem.label}
     </div>`;
@@ -2007,7 +2051,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
             tabindex="-1"
           >
             <span class="icon" aria-label="${toggleState}"
-              >${keyboardArrowDown}</span
+              ><arc-icon icon="keyboardArrowDown"></arc-icon></span
             >
           </anypoint-icon-button>
         </div>
@@ -2037,7 +2081,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       >
         ${item.label}
         <span class="icon new-tab" title="Opens in a new tab"
-          >${openInNew}</span
+          ><arc-icon icon="openInNew"></arc-icon></span
         >
       </a>`;
     }
@@ -2087,7 +2131,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
             data-toggle="types"
           >
             <span class="icon" aria-label="${toggleState}"
-              >${keyboardArrowDown}</span
+              ><arc-icon icon="keyboardArrowDown"></arc-icon></span
             >
           </anypoint-icon-button>
         </div>
@@ -2148,7 +2192,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
           data-toggle="security"
         >
           <span class="icon" aria-label="${toggleState}"
-            >${keyboardArrowDown}</span
+            ><arc-icon icon="keyboardArrowDown"></arc-icon></span
           >
         </anypoint-icon-button>
       </div>
