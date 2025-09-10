@@ -3,7 +3,7 @@ import { LitElement, html } from 'lit-element';
 import { AmfHelperMixin } from '@api-components/amf-helper-mixin/amf-helper-mixin.js';
 import '@api-components/raml-aware/raml-aware.js';
 import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
-import '@advanced-rest-client/icons/arc-icon.js';
+import { keyboardArrowDown, codegenie, openInNew } from '@advanced-rest-client/icons/ArcIcons.js';
 import '@anypoint-web-components/anypoint-collapse/anypoint-collapse.js';
 import httpMethodStyles from '@api-components/http-method-label/http-method-label-common-styles.js';
 import navStyles from './Styles.js';
@@ -1873,7 +1873,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
           data-toggle="endpoints"
         >
           <span class="icon" aria-label="${toggleState}"
-            ><arc-icon icon="keyboardArrowDown"></arc-icon></span
+            >${keyboardArrowDown}</span
           >
         </anypoint-icon-button>
       </div>
@@ -1960,7 +1960,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
           tabindex="-1"
           @click="${this._toggleEndpointButton}"
         >
-          <span class="icon" aria-label="${ariaLabel}"><arc-icon icon="keyboardArrowDown"></arc-icon></span>
+          <span class="icon" aria-label="${ariaLabel}">${keyboardArrowDown}</span>
         </anypoint-icon-button>
       </div>
       <anypoint-collapse
@@ -2006,10 +2006,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
         data-method="${methodItem.method}"
         >${methodItem.method}
         ${methodItem.hasAgent
-          ? html`<arc-icon
-              icon="codegenie"
-              class="method-icon"
-            ></arc-icon>`
+          ? html`<span class="method-icon">${codegenie}</span>`
           : ''}</span
       >
       ${methodItem.label}
@@ -2051,7 +2048,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
             tabindex="-1"
           >
             <span class="icon" aria-label="${toggleState}"
-              ><arc-icon icon="keyboardArrowDown"></arc-icon></span
+              >${keyboardArrowDown}</span
             >
           </anypoint-icon-button>
         </div>
@@ -2081,7 +2078,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       >
         ${item.label}
         <span class="icon new-tab" title="Opens in a new tab"
-          ><arc-icon icon="openInNew"></arc-icon></span
+          >${openInNew}</span
         >
       </a>`;
     }
@@ -2131,7 +2128,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
             data-toggle="types"
           >
             <span class="icon" aria-label="${toggleState}"
-              ><arc-icon icon="keyboardArrowDown"></arc-icon></span
+              >{keyboardArrowDown}</span
             >
           </anypoint-icon-button>
         </div>
@@ -2192,7 +2189,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
           data-toggle="security"
         >
           <span class="icon" aria-label="${toggleState}"
-            ><arc-icon icon="keyboardArrowDown"></arc-icon></span
+            >${keyboardArrowDown}</span
           >
         </anypoint-icon-button>
       </div>
