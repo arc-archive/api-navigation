@@ -422,7 +422,8 @@ describe('<api-navigation>', () => {
           class="method-label method-label-with-icon"
           data-method="get"
           >get
-          <arc-icon class="method-icon" icon="codegenie"></arc-icon>
+            <span class="method-icon">
+            </span>
           </span>`,
         {
           ignoreAttributes: ['data-id']
