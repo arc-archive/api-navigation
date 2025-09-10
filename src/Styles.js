@@ -203,6 +203,7 @@ export default css`
     padding-left: 3px;
     padding-bottom: 2px;
     padding-left: 4px;
+    fill: var(--method-display-selected-color, #fff);
   }
 
 
