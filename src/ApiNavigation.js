@@ -2128,7 +2128,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
             data-toggle="types"
           >
             <span class="icon" aria-label="${toggleState}"
-              >{keyboardArrowDown}</span
+              >${keyboardArrowDown}</span
             >
           </anypoint-icon-button>
         </div>
