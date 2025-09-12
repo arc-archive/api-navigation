@@ -327,7 +327,7 @@ export declare class ApiNavigation {
    * the first endpoints to appear first, and the last endpoints to appear
    * last
    */
-  _rearrangeEndpoints(endpoints: EndpointItem[]): EndpointItem[];
+  _rearrangeEndpoints(endpoints: any[]): any[];
 
   /**
    * Transforms a list of endpoints into a map that goes from
@@ -382,6 +382,12 @@ export declare class ApiNavigation {
    * @returns Method view model
    */
   _createOperationModel(item: object): MethodItem;
+  /** Detects whether current API is gRPC by inspecting media types */
+  __detectGrpcInternal(): boolean;
+  /** Maps AMF operation to gRPC stream type, defaults to 'unary' */
+  __getGrpcStreamTypeInternal(operation: object): 'unary' | 'server_streaming' | 'client_streaming' | 'bidi_streaming';
+  /** Returns request/response schema names for an operation */
+  __getOperationSchemasInternal(operationOrId: object | string): { request?: string; response?: string } | undefined;
 
   /**
    * Click handler for section name item.

@@ -276,6 +276,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       return;
     }
     this._selected = value;
+    debugger
     this.requestUpdate('selected', old);
     this._selectedChanged(value);
     this._selectionChanged(value, this.selectedType);
@@ -442,11 +443,44 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._items = null;
   }
 
+  set rearrangeEndpoints(value) {
+    const old = this.__rearrangeEndpoints;
+    if (old === value) {
+      return;
+    }
+    this.__rearrangeEndpoints = value;
+    this.requestUpdate('rearrangeEndpoints', old);
+    if(this.amf) {
+      this.__amfChanged(this.amf);
+    }
+  }
+
+  get rearrangeEndpoints() {
+    return this.__rearrangeEndpoints;
+  }
+
+  set renderFullPaths(value) {
+    const old = this._renderFullPaths;
+    if (old === value) {
+      return;
+    }
+    this._renderFullPaths = value;
+    this.requestUpdate('renderFullPaths', old);
+    if(this.amf) {
+      this.__amfChanged(this.amf);
+    }
+  }
+
+  get renderFullPaths() {
+    return this._renderFullPaths;
+  }
+
   constructor() {
     super();
 
     this.summaryLabel = 'Summary';
     this._isFragment = false;
+    this._isGrpc = false;
     this.summary = false;
     this.noink = false;
     this.allowPaths = false;
@@ -517,7 +551,9 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
    * @override
    */
   __amfChanged(api) {
-    if (!api) {
+    debugger
+    // Guard against initial empty-array AMF updates from data loaders
+    if (!api || (Array.isArray(api) && api.length === 0 || !this.amf[0])) {
       return;
     }
     let model = api;
@@ -525,6 +561,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       [model] = model;
     }
     let data = {};
+    this.__operationById = {};
     let isFragment = true;
     this._items = null;
     const moduleKey = this._getAmfKey(this.ns.aml.vocabularies.document.Module);
@@ -563,6 +600,18 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._types = data.types;
     this._security = data.securitySchemes;
     this._endpoints = data.endpoints;
+    try {
+      const webApi = this._computeApi(model);
+      const apiName = webApi ? this._getValue(webApi, this.ns.aml.vocabularies.core.name) : undefined;
+      this._isGrpc = false; // simplified view: keep REST-like until we polish gRPC helpers
+      if (this._renderSummary) {
+        if (apiName) {
+          this.summaryLabel = `${apiName} Overview${this._isGrpc ? ' \u2013 gRPC' : ''}`;
+        } else if (this._isGrpc) {
+          this.summaryLabel = 'Overview – gRPC';
+        }
+      }
+    } catch (_) {}
     this._closeCollapses();
     setTimeout(() => {
       this._selectedChanged(this.selected);
@@ -723,6 +772,11 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     if (!endpoints) {
       return null;
     }
+    const pathKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.path);
+    return [...endpoints].sort((a,b) => {
+      // endpoints here are AMF nodes when called in _traverseEncodes
+      const pathA = this._getValue(a, pathKey);
+      const pathB = this._getValue(b, pathKey);
 
     const merge = (left, right) => {
       const resultArray = [];
@@ -950,10 +1004,13 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     const result = {};
 
     let name = this._getValue(item, this.ns.aml.vocabularies.core.name);
-    const path = /** @type string */ (this._getValue(
+    let path = /** @type string */ (this._getValue(
       item,
       this.ns.raml.vocabularies.apiContract.path
     ));
+    if (!path && name) {
+      path = `/${name}`;
+    }
     result.path = path;
 
     let tmpPath = path;
@@ -997,7 +1054,13 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     const id = item['@id'];
     const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
     const operations = this._ensureArray(item[key]) || [];
-    const methods = operations.map(op => this._createOperationModel(op));
+    const methods = operations.map(op => {
+      const model = this._createOperationModel(op);
+      if (op && op['@id']) {
+        this.__operationById[op['@id']] = op;
+      }
+      return model;
+    });
     result.label = String(name);
     result.id = id;
     result.indent = indent;
@@ -1019,10 +1082,15 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     const methodKey = this.ns.aml.vocabularies.apiContract.method;
     const id = item['@id'];
     const method = /** @type string */ (this._getValue(item, methodKey));
+    const grpcStreamType = undefined;
+    const schemas = undefined;
     return {
       label,
       id,
       method,
+      grpcStreamType,
+      requestSchema: schemas && schemas.request || undefined,
+      responseSchema: schemas && schemas.response || undefined,
     };
   }
 
@@ -1328,7 +1396,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     }
     node.classList.add('passive-selected');
     this.__hasPassiveSelection = true;
-    const collapse = /** @type IronCollapseElement */ (node.parentElement);
+    const collapse = /** @type AnypointCollapseElement */ (node.parentElement);
     if (!collapse.opened) {
       collapse.opened = true;
     }
@@ -1887,7 +1955,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
    */
   _overviewTemplate(item) {
     if (this.noOverview) {
-      return '';
+      return html``;
     }
     return html`<div
         part="api-navigation-list-item"
@@ -1990,8 +2058,22 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       @click="${this._itemClickHandler}"
       style="${style}"
     >
-      <span class="method-label" data-method="${methodItem.method}"
-        >${methodItem.method}</span
+      <span
+        class="method-label ${methodItem.hasAgent
+          ? 'method-label-with-icon'
+          : ''}"
+        data-method="${methodItem.method}"
+        >${methodItem.method}
+        ${methodItem.hasAgent
+          ? html`<span class="method-icon">${codegenie}</span>`
+          : ''}
+        ${methodItem.grpcStreamType && methodItem.grpcStreamType !== 'unary'
+          ? html`<span class="stream-badge" title="gRPC ${methodItem.grpcStreamType}">${methodItem.grpcStreamType}</span>`
+          : ''}
+        ${this._isGrpc && (methodItem.requestSchema || methodItem.responseSchema)
+          ? html`<span class="schema-hint" title="${methodItem.requestSchema || ''} → ${methodItem.responseSchema || ''}">${methodItem.requestSchema || ''}${methodItem.responseSchema ? html` → ${methodItem.responseSchema}` : ''}</span>`
+          : ''}
+        </span
       >
       ${methodItem.label}
     </div>`;
@@ -2212,6 +2294,9 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     const { styles, _renderSummary, summaryLabel } = this;
     return html`<style>
         ${styles}
+        .grpc-badge { display: inline-block; margin-left: 8px; padding: 1px 6px; border-radius: 10px; font-size: 10px; line-height: 14px; background: #2363eb; color: #fff; text-transform: uppercase; }
+        .stream-badge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 10px; line-height: 14px; background: #6b7280; color: #fff; text-transform: lowercase; }
+        .schema-hint { margin-left: 8px; color: var(--api-navigation-schema-hint-color, #6b7280); font-size: 11px; }
       </style>
       ${this._awareTemplate()}
       <div class="wrapper" role="menu" aria-label="Navigate the API">
@@ -2227,6 +2312,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
                 @click="${this._itemClickHandler}"
               >
                 ${summaryLabel}
+                ${this._isGrpc ? html`<span class="grpc-badge" aria-label="gRPC API">gRPC</span>` : ''}
               </div>
             </section>`
           : undefined}
