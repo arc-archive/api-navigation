@@ -276,7 +276,6 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       return;
     }
     this._selected = value;
-    debugger
     this.requestUpdate('selected', old);
     this._selectedChanged(value);
     this._selectionChanged(value, this.selectedType);
@@ -551,7 +550,6 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
    * @override
    */
   __amfChanged(api) {
-    debugger
     // Guard against initial empty-array AMF updates from data loaders
     if (!api || (Array.isArray(api) && api.length === 0 || !this.amf[0])) {
       return;
@@ -568,7 +566,10 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     if (this._hasType(model, this.ns.aml.vocabularies.document.Document)) {
       isFragment = false;
       model = this._ensureAmfModel(model);
-      data = this._collectData(model);
+      // Decide collection strategy based on whether this is a gRPC API
+      const isGrpcApi = typeof this._isGrpcApi === 'function' ? !!this._isGrpcApi(model) : false;
+      this._isGrpc = isGrpcApi;
+      data = isGrpcApi ? this._collectGrpcNavigationData(model) : this._collectData(model);
     } else if (
       this._hasType(
         model,
@@ -603,13 +604,8 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     try {
       const webApi = this._computeApi(model);
       const apiName = webApi ? this._getValue(webApi, this.ns.aml.vocabularies.core.name) : undefined;
-      this._isGrpc = false; // simplified view: keep REST-like until we polish gRPC helpers
-      if (this._renderSummary) {
-        if (apiName) {
-          this.summaryLabel = `${apiName} Overview${this._isGrpc ? ' \u2013 gRPC' : ''}`;
-        } else if (this._isGrpc) {
-          this.summaryLabel = 'Overview – gRPC';
-        }
+      if (this._renderSummary && apiName) {
+        this.summaryLabel = `${apiName} Overview`;
       }
     } catch (_) {}
     this._closeCollapses();
@@ -644,6 +640,92 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._traverseEncodes(model, result);
     delete result._typeIds;
     delete result._basePaths;
+    return result;
+  }
+
+  /**
+   * Collects navigation data for gRPC APIs using AmfHelperMixin helpers.
+   * Produces the same view-model shape used by the renderer.
+   *
+   * @param {object} model AMF model
+   * @return {TargetModel}
+   */
+  _collectGrpcNavigationData(model) {
+    const result = {
+      documentation: [],
+      types: [],
+      securitySchemes: [],
+      endpoints: [],
+    };
+    if (!model) {
+      return result;
+    }
+    const webApi = this._computeApi(model);
+    if (!webApi) {
+      return result;
+    }
+    // Build services -> methods as endpoint-like items
+    const services = typeof this._computeGrpcServices === 'function' ? this._computeGrpcServices(webApi) : undefined;
+    const servicesArray = services || [];
+    if (servicesArray && servicesArray.length) {
+      servicesArray.forEach(service => {
+        const serviceId = service && service['@id'];
+        const serviceName = typeof this._computeGrpcServiceName === 'function'
+          ? this._computeGrpcServiceName(service)
+          : this._getValue(service, this.ns.aml.vocabularies.core.name);
+        const operations = typeof this._computeGrpcMethods === 'function' ? this._computeGrpcMethods(service) : undefined;
+        const opsArray = operations || [];
+        const methods = opsArray.map(op => {
+          if (op && op['@id']) {
+            this.__operationById[op['@id']] = op;
+          }
+          const vm = this._createOperationModel(op);
+          // Replace method chip label with simplified stream type for gRPC
+          if (vm && vm.grpcStreamType) {
+            // Map to HTTP method colors: unary→patch(violet), client→publish(green), server→subscribe(blue), bidi→options(gray)
+            const colorMethodMap = {
+              'unary': 'patch',
+              'client_streaming': 'publish',
+              'server_streaming': 'subscribe',
+              'bidi_streaming': 'options'
+            };
+            const labelMap = {
+              'unary': 'UNARY',
+              'client_streaming': 'CLIENT STREAM',
+              'server_streaming': 'SERVER STREAM',
+              'bidi_streaming': 'BIDIRECTIONAL'
+            };
+            vm.method = labelMap[vm.grpcStreamType] || 'UNARY';
+            vm.methodForColor = colorMethodMap[vm.grpcStreamType] || 'patch';
+          }
+          return vm;
+        });
+        result.endpoints.push({
+          label: String(serviceName || 'Service'),
+          id: serviceId,
+          indent: 0,
+          methods,
+        });
+      });
+    }
+    // Populate Messages in the Types section
+    const messages = typeof this._computeGrpcMessageTypes === 'function' ? this._computeGrpcMessageTypes(model) : undefined;
+    const msgArray = messages || [];
+    if (msgArray && msgArray.length) {
+      msgArray.forEach(shape => {
+        const id = shape && shape['@id'];
+        let name = this._getValue(shape, this.ns.aml.vocabularies.core.name);
+        if (!name) {
+          name = this._getValue(shape, this.ns.w3.shacl.name);
+        }
+        if (id && name) {
+          result.types.push({
+            label: String(name),
+            id,
+          });
+        }
+      });
+    }
     return result;
   }
 
@@ -772,12 +854,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     if (!endpoints) {
       return null;
     }
-    const pathKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.path);
-    return [...endpoints].sort((a,b) => {
-      // endpoints here are AMF nodes when called in _traverseEncodes
-      const pathA = this._getValue(a, pathKey);
-      const pathB = this._getValue(b, pathKey);
-
+    // endpoints here are AMF nodes when called in _traverseEncodes
     const merge = (left, right) => {
       const resultArray = [];
       let leftIndex = 0;
@@ -1081,16 +1158,42 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     ));
     const methodKey = this.ns.aml.vocabularies.apiContract.method;
     const id = item['@id'];
-    const method = /** @type string */ (this._getValue(item, methodKey));
-    const grpcStreamType = undefined;
-    const schemas = undefined;
+    let method = /** @type string */ (this._getValue(item, methodKey));
+    // Populate gRPC fields via helpers when available
+    /** @type {'unary'|'server_streaming'|'client_streaming'|'bidi_streaming'|undefined} */
+    const grpcStreamType = this._isGrpc && typeof this._getGrpcStreamType === 'function'
+      ? /** @type any */ (this._getGrpcStreamType(item))
+      : undefined;
+    const requestShape = this._isGrpc && typeof this._computeGrpcRequestSchema === 'function'
+      ? this._computeGrpcRequestSchema(item)
+      : undefined;
+    const responseShape = this._isGrpc && typeof this._computeGrpcResponseSchema === 'function'
+      ? this._computeGrpcResponseSchema(item)
+      : undefined;
+    let requestSchema;
+    if (requestShape) {
+      const rn = this._getValue(requestShape, this.ns.aml.vocabularies.core.name) || this._getValue(requestShape, this.ns.w3.shacl.name);
+      if (typeof rn === 'string') {
+        requestSchema = rn;
+      }
+    }
+    let responseSchema;
+    if (responseShape) {
+      const rsn = this._getValue(responseShape, this.ns.aml.vocabularies.core.name) || this._getValue(responseShape, this.ns.w3.shacl.name);
+      if (typeof rsn === 'string') {
+        responseSchema = rsn;
+      }
+    }
+    if (this._isGrpc && grpcStreamType && typeof this._getGrpcStreamTypeDisplayName === 'function') {
+      method = this._getGrpcStreamTypeDisplayName(grpcStreamType);
+    }
     return {
       label,
       id,
       method,
       grpcStreamType,
-      requestSchema: schemas && schemas.request || undefined,
-      responseSchema: schemas && schemas.response || undefined,
+      requestSchema,
+      responseSchema,
     };
   }
 
@@ -1907,8 +2010,15 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       return '';
     }
     const toggleState = this.endpointsOpened ? 'Expanded' : 'Collapsed';
-
-    const sectionLabel = this._isWebAPI(this.amf) ? 'Endpoints' : 'Channels';
+    
+    let sectionLabel;
+    if (this._isGrpc) {
+      sectionLabel = 'Methods';
+    } else if (this._isWebAPI(this.amf)) {
+      sectionLabel = 'Endpoints';
+    } else {
+      sectionLabel = 'Channels';
+    }
     const lowercaseSectionLabel = sectionLabel.toLowerCase();
 
     return html` <section
@@ -2062,20 +2172,10 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
         class="method-label ${methodItem.hasAgent
           ? 'method-label-with-icon'
           : ''}"
-        data-method="${methodItem.method}"
-        >${methodItem.method}
-        ${methodItem.hasAgent
-          ? html`<span class="method-icon">${codegenie}</span>`
-          : ''}
-        ${methodItem.grpcStreamType && methodItem.grpcStreamType !== 'unary'
-          ? html`<span class="stream-badge" title="gRPC ${methodItem.grpcStreamType}">${methodItem.grpcStreamType}</span>`
-          : ''}
-        ${this._isGrpc && (methodItem.requestSchema || methodItem.responseSchema)
-          ? html`<span class="schema-hint" title="${methodItem.requestSchema || ''} → ${methodItem.responseSchema || ''}">${methodItem.requestSchema || ''}${methodItem.responseSchema ? html` → ${methodItem.responseSchema}` : ''}</span>`
-          : ''}
-        </span
+        data-method="${methodItem.methodForColor || methodItem.method}"
+        >${methodItem.method}</span
       >
-      ${methodItem.label}
+      ${!this._isGrpc ? methodItem.label : ''}
     </div>`;
   }
 
@@ -2174,6 +2274,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       return '';
     }
     const toggleState = this.typesOpened ? 'Expanded' : 'Collapsed';
+    const typesLabel = this._isGrpc ? 'Messages' : 'Types';
 
     return html`
       <section class="types" ?data-opened="${this.typesOpened}">
@@ -2183,7 +2284,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
           @click="${this._toggleSectionHandler}"
           title="Toggle types list"
         >
-          <div class="title-h3">Types</div>
+          <div class="title-h3">${typesLabel}</div>
           <anypoint-icon-button
             part="toggle-button"
             class="toggle-button"
@@ -2294,9 +2395,6 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     const { styles, _renderSummary, summaryLabel } = this;
     return html`<style>
         ${styles}
-        .grpc-badge { display: inline-block; margin-left: 8px; padding: 1px 6px; border-radius: 10px; font-size: 10px; line-height: 14px; background: #2363eb; color: #fff; text-transform: uppercase; }
-        .stream-badge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 10px; font-size: 10px; line-height: 14px; background: #6b7280; color: #fff; text-transform: lowercase; }
-        .schema-hint { margin-left: 8px; color: var(--api-navigation-schema-hint-color, #6b7280); font-size: 11px; }
       </style>
       ${this._awareTemplate()}
       <div class="wrapper" role="menu" aria-label="Navigate the API">
@@ -2312,7 +2410,6 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
                 @click="${this._itemClickHandler}"
               >
                 ${summaryLabel}
-                ${this._isGrpc ? html`<span class="grpc-badge" aria-label="gRPC API">gRPC</span>` : ''}
               </div>
             </section>`
           : undefined}

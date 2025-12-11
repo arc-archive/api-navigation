@@ -5,6 +5,7 @@ export declare interface NavigationItem {
 
 export declare interface MethodItem extends NavigationItem {
   method: string;
+  methodForColor?: string;
   hasAgent?: boolean;
   grpcStreamType?: 'unary' | 'server_streaming' | 'client_streaming' | 'bidi_streaming';
   requestSchema?: string;
