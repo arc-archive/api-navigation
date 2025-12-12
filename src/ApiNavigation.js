@@ -3,7 +3,7 @@ import { LitElement, html } from 'lit-element';
 import { AmfHelperMixin } from '@api-components/amf-helper-mixin/amf-helper-mixin.js';
 import '@api-components/raml-aware/raml-aware.js';
 import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
-import { keyboardArrowDown, codegenie, openInNew } from '@advanced-rest-client/icons/ArcIcons.js';
+import { codegenie, keyboardArrowDown, openInNew } from '@advanced-rest-client/icons/ArcIcons.js';
 import '@anypoint-web-components/anypoint-collapse/anypoint-collapse.js';
 import httpMethodStyles from '@api-components/http-method-label/http-method-label-common-styles.js';
 import navStyles from './Styles.js';
@@ -843,8 +843,8 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
 
   /**
    * Sort endpoints alphabetically based on path
-   * @param {EndpointItem[]} endpoints
-   * @return {EndpointItem[]}
+   * @param {any[]} endpoints AMF endpoint nodes
+   * @return {any[]} Sorted AMF endpoint nodes
    */
   _rearrangeEndpoints(endpoints) {
     if (!endpoints) {
@@ -2150,7 +2150,10 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
           ? 'method-label-with-icon'
           : ''}"
         data-method="${methodItem.methodForColor || methodItem.method}"
-        >${methodItem.method}</span
+        >${methodItem.method}
+        ${methodItem.hasAgent
+          ? html`<span class="method-icon">${codegenie}</span>`
+          : ''}</span
       >
       ${!this._isGrpc ? methodItem.label : ''}
     </div>`;
