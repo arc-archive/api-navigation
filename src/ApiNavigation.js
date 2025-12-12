@@ -479,6 +479,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this.summary = false;
     this.noink = false;
     this.allowPaths = false;
+    this._isGrpc = false;
     this.compatibility = false;
     this.rearrangeEndpoints = false;
     this.indentSize = 8;
@@ -547,7 +548,8 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
    * @override
    */
   __amfChanged(api) {
-    if (!api) {
+    // Guard against initial empty-array AMF updates from data loaders
+    if (!api || (Array.isArray(api) && api.length === 0 || !this.amf[0])) {
       return;
     }
     let model = api;
@@ -555,13 +557,17 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       [model] = model;
     }
     let data = {};
+    this.__operationById = {};
     let isFragment = true;
     this._items = null;
     const moduleKey = this._getAmfKey(this.ns.aml.vocabularies.document.Module);
     if (this._hasType(model, this.ns.aml.vocabularies.document.Document)) {
       isFragment = false;
       model = this._ensureAmfModel(model);
-      data = this._collectData(model);
+      // Decide collection strategy based on whether this is a gRPC API
+      const isGrpcApi = typeof this._isGrpcApi === 'function' ? !!this._isGrpcApi(model) : false;
+      this._isGrpc = isGrpcApi;
+      data = isGrpcApi ? this._collectGrpcNavigationData(model) : this._collectData(model);
     } else if (
       this._hasType(
         model,
@@ -593,6 +599,13 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._types = data.types;
     this._security = data.securitySchemes;
     this._endpoints = data.endpoints;
+    try {
+      const webApi = this._computeApi(model);
+      const apiName = webApi ? this._getValue(webApi, this.ns.aml.vocabularies.core.name) : undefined;
+      if (this._renderSummary && apiName) {
+        this.summaryLabel = `${apiName} Overview`;
+      }
+    } catch (_) {}
     this._closeCollapses();
     setTimeout(() => {
       this._selectedChanged(this.selected);
@@ -625,6 +638,92 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._traverseEncodes(model, result);
     delete result._typeIds;
     delete result._basePaths;
+    return result;
+  }
+
+   /**
+   * Collects navigation data for gRPC APIs using AmfHelperMixin helpers.
+   * Produces the same view-model shape used by the renderer.
+   *
+   * @param {object} model AMF model
+   * @return {TargetModel}
+   */
+   _collectGrpcNavigationData(model) {
+    const result = {
+      documentation: [],
+      types: [],
+      securitySchemes: [],
+      endpoints: [],
+    };
+    if (!model) {
+      return result;
+    }
+    const webApi = this._computeApi(model);
+    if (!webApi) {
+      return result;
+    }
+    // Build services -> methods as endpoint-like items
+    const services = typeof this._computeGrpcServices === 'function' ? this._computeGrpcServices(webApi) : undefined;
+    const servicesArray = services || [];
+    if (servicesArray && servicesArray.length) {
+      servicesArray.forEach(service => {
+        const serviceId = service && service['@id'];
+        const serviceName = typeof this._computeGrpcServiceName === 'function'
+          ? this._computeGrpcServiceName(service)
+          : this._getValue(service, this.ns.aml.vocabularies.core.name);
+        const operations = typeof this._computeGrpcMethods === 'function' ? this._computeGrpcMethods(service) : undefined;
+        const opsArray = operations || [];
+        const methods = opsArray.map(op => {
+          if (op && op['@id']) {
+            this.__operationById[op['@id']] = op;
+          }
+          const vm = this._createOperationModel(op);
+          // Replace method chip label with simplified stream type for gRPC
+          if (vm && vm.grpcStreamType) {
+            // Map to HTTP method colors: unary→patch(violet), client→publish(green), server→subscribe(blue), bidi→options(gray)
+            const colorMethodMap = {
+              'unary': 'patch',
+              'client_streaming': 'publish',
+              'server_streaming': 'subscribe',
+              'bidi_streaming': 'options'
+            };
+            const labelMap = {
+              'unary': 'UNARY',
+              'client_streaming': 'CLIENT STREAM',
+              'server_streaming': 'SERVER STREAM',
+              'bidi_streaming': 'BIDIRECTIONAL'
+            };
+            vm.method = labelMap[vm.grpcStreamType] || 'UNARY';
+            vm.methodForColor = colorMethodMap[vm.grpcStreamType] || 'patch';
+          }
+          return vm;
+        });
+        result.endpoints.push({
+          label: String(serviceName || 'Service'),
+          id: serviceId,
+          indent: 0,
+          methods,
+        });
+      });
+    }
+    // Populate Messages in the Types section
+    const messages = typeof this._computeGrpcMessageTypes === 'function' ? this._computeGrpcMessageTypes(model) : undefined;
+    const msgArray = messages || [];
+    if (msgArray && msgArray.length) {
+      msgArray.forEach(shape => {
+        const id = shape && shape['@id'];
+        let name = this._getValue(shape, this.ns.aml.vocabularies.core.name);
+        if (!name) {
+          name = this._getValue(shape, this.ns.w3.shacl.name);
+        }
+        if (id && name) {
+          result.types.push({
+            label: String(name),
+            id,
+          });
+        }
+      });
+    }
     return result;
   }
 
@@ -917,10 +1016,13 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     const result = {};
 
     let name = this._getValue(item, this.ns.aml.vocabularies.core.name);
-    const path = /** @type string */ (this._getValue(
+    let path = /** @type string */ (this._getValue(
       item,
       this.ns.raml.vocabularies.apiContract.path
     ));
+    if (!path && name) {
+      path = `/${name}`;
+    }
     result.path = path;
 
     let tmpPath = path;
@@ -964,7 +1066,13 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     const id = item['@id'];
     const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
     const operations = this._ensureArray(item[key]) || [];
-    const methods = operations.map(op => this._createOperationModel(op));
+    const methods = operations.map(op => {
+      const model = this._createOperationModel(op);
+      if (op && op['@id']) {
+        this.__operationById[op['@id']] = op;
+      }
+      return model;
+    });
     result.label = String(name);
     result.id = id;
     result.indent = indent;
@@ -985,11 +1093,42 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     ));
     const methodKey = this.ns.aml.vocabularies.apiContract.method;
     const id = item['@id'];
-    const method = /** @type string */ (this._getValue(item, methodKey));
+    let method = /** @type string */ (this._getValue(item, methodKey));
+    // Populate gRPC fields via helpers when available
+    /** @type {'unary'|'server_streaming'|'client_streaming'|'bidi_streaming'|undefined} */
+    const grpcStreamType = this._isGrpc && typeof this._getGrpcStreamType === 'function'
+      ? /** @type any */ (this._getGrpcStreamType(item))
+      : undefined;
+    const requestShape = this._isGrpc && typeof this._computeGrpcRequestSchema === 'function'
+      ? this._computeGrpcRequestSchema(item)
+      : undefined;
+    const responseShape = this._isGrpc && typeof this._computeGrpcResponseSchema === 'function'
+      ? this._computeGrpcResponseSchema(item)
+      : undefined;
+    let requestSchema;
+    if (requestShape) {
+      const rn = this._getValue(requestShape, this.ns.aml.vocabularies.core.name) || this._getValue(requestShape, this.ns.w3.shacl.name);
+      if (typeof rn === 'string') {
+        requestSchema = rn;
+      }
+    }
+    let responseSchema;
+    if (responseShape) {
+      const rsn = this._getValue(responseShape, this.ns.aml.vocabularies.core.name) || this._getValue(responseShape, this.ns.w3.shacl.name);
+      if (typeof rsn === 'string') {
+        responseSchema = rsn;
+      }
+    }
+    if (this._isGrpc && grpcStreamType && typeof this._getGrpcStreamTypeDisplayName === 'function') {
+      method = this._getGrpcStreamTypeDisplayName(grpcStreamType);
+    }
     return {
       label,
       id,
       method,
+      grpcStreamType,
+      requestSchema,
+      responseSchema,
     };
   }
 
@@ -1298,7 +1437,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     }
     node.classList.add('passive-selected');
     this.__hasPassiveSelection = true;
-    const collapse = /** @type IronCollapseElement */ (node.parentElement);
+    const collapse = /** @type AnypointCollapseElement */ (node.parentElement);
     if (!collapse.opened) {
       collapse.opened = true;
     }
@@ -1847,7 +1986,14 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     }
     const toggleState = this.endpointsOpened ? 'Expanded' : 'Collapsed';
 
-    const sectionLabel = this._isWebAPI(this.amf) ? 'Endpoints' : 'Channels';
+    let sectionLabel;
+    if (this._isGrpc) {
+      sectionLabel = 'Methods';
+    } else if (this._isWebAPI(this.amf)) {
+      sectionLabel = 'Endpoints';
+    } else {
+      sectionLabel = 'Channels';
+    }
     const lowercaseSectionLabel = sectionLabel.toLowerCase();
 
     return html` <section
@@ -1895,7 +2041,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
    */
   _overviewTemplate(item) {
     if (this.noOverview) {
-      return '';
+      return html``;
     }
     return html`<div
         part="api-navigation-list-item"
@@ -2003,13 +2149,10 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
         class="method-label ${methodItem.hasAgent
           ? 'method-label-with-icon'
           : ''}"
-        data-method="${methodItem.method}"
-        >${methodItem.method}
-        ${methodItem.hasAgent
-          ? html`<span class="method-icon">${codegenie}</span>`
-          : ''}</span
+        data-method="${methodItem.methodForColor || methodItem.method}"
+        >${methodItem.method}</span
       >
-      ${methodItem.label}
+      ${!this._isGrpc ? methodItem.label : ''}
     </div>`;
   }
 
@@ -2108,6 +2251,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       return '';
     }
     const toggleState = this.typesOpened ? 'Expanded' : 'Collapsed';
+    const typesLabel = this._isGrpc ? 'Messages' : 'Types';
 
     return html`
       <section class="types" ?data-opened="${this.typesOpened}">
@@ -2117,7 +2261,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
           @click="${this._toggleSectionHandler}"
           title="Toggle types list"
         >
-          <div class="title-h3">Types</div>
+          <div class="title-h3">${typesLabel}</div>
           <anypoint-icon-button
             part="toggle-button"
             class="toggle-button"

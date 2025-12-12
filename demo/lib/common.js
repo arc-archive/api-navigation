@@ -80,6 +80,7 @@ export class NavDemoPage extends DemoPage {
 
   _apiListTemplate() {
     return [
+      ['grpc-test', 'gRPC API'],
       ['demo-api', 'Demo API'],
       ['agents-api', 'Agents API'],
       ['exchange-experience-api', 'Exchange Experience API'],

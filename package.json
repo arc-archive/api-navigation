@@ -26,10 +26,11 @@
     "email": "arc@mulesoft.com"
   },
   "dependencies": {
+    "@advanced-rest-client/arc-icons": "^3.3.4",
     "@advanced-rest-client/icons": "^4.0.2",
-    "@anypoint-web-components/anypoint-button": "^1.2.3",
+    "@anypoint-web-components/anypoint-button": "^1.1.1",
     "@anypoint-web-components/anypoint-collapse": "^0.1.0",
-    "@api-components/amf-helper-mixin": "^4.5.31",
+    "@api-components/amf-helper-mixin": "^4.5.34",
     "@api-components/http-method-label": "^3.1.5",
     "@api-components/raml-aware": "^3.0.0",
     "lit-element": "^2.3.1",
