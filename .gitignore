@@ -62,3 +62,6 @@ coverage
 !demo/apis.json
 
 .idea
+
+!/demo/grpc-test.json
+!/demo/grpc-test-compact.json
