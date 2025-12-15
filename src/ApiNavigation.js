@@ -681,9 +681,9 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
           if (op && op['@id']) {
             this.__operationById[op['@id']] = op;
           }
-          const vm = this._createOperationModel(op);
+          const methodModel = this._createOperationModel(op);
           // Replace method chip label with simplified stream type for gRPC
-          if (vm && vm.grpcStreamType) {
+          if (methodModel && methodModel.grpcStreamType) {
             // Map to HTTP method colors: unary→patch(violet), client→publish(green), server→subscribe(blue), bidi→options(gray)
             const colorMethodMap = {
               'unary': 'patch',
@@ -697,10 +697,10 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
               'server_streaming': 'SERVER STREAM',
               'bidi_streaming': 'BIDIRECTIONAL'
             };
-            vm.method = labelMap[vm.grpcStreamType] || 'UNARY';
-            vm.methodForColor = colorMethodMap[vm.grpcStreamType] || 'patch';
+            methodModel.method = labelMap[methodModel.grpcStreamType] || 'UNARY';
+            methodModel.methodForColor = colorMethodMap[methodModel.grpcStreamType] || 'patch';
           }
-          return vm;
+          return methodModel;
         });
         result.endpoints.push({
           label: String(serviceName || 'Service'),
@@ -711,7 +711,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       });
     }
     // Populate Messages in the Types section
-    const messages = typeof this._computeGrpcMessageTypes === 'function' ? this._computeGrpcMessageTypes(model) : undefined;
+    const messages = this._computeGrpcMessageTypes(model);
     const msgArray = messages || [];
     if (msgArray && msgArray.length) {
       msgArray.forEach(shape => {
@@ -847,8 +847,8 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
 
   /**
    * Sort endpoints alphabetically based on path
-   * @param {any[]} endpoints AMF endpoint nodes
-   * @return {any[]} Sorted AMF endpoint nodes
+   * @param {EndpointItem[]} endpoints
+   * @return {EndpointItem[]}
    */
   _rearrangeEndpoints(endpoints) {
     if (!endpoints) {
@@ -1100,15 +1100,10 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     let method = /** @type string */ (this._getValue(item, methodKey));
     // Populate gRPC fields via helpers when available
     /** @type {'unary'|'server_streaming'|'client_streaming'|'bidi_streaming'|undefined} */
-    const grpcStreamType = this._isGrpc && typeof this._getGrpcStreamType === 'function'
-      ? /** @type any */ (this._getGrpcStreamType(item))
-      : undefined;
-    const requestShape = this._isGrpc && typeof this._computeGrpcRequestSchema === 'function'
-      ? this._computeGrpcRequestSchema(item)
-      : undefined;
-    const responseShape = this._isGrpc && typeof this._computeGrpcResponseSchema === 'function'
-      ? this._computeGrpcResponseSchema(item)
-      : undefined;
+    const grpcStreamType = this._isGrpc &&  /** @type any */ (this._getGrpcStreamType(item))
+    const requestShape = this._isGrpc && this._computeGrpcRequestSchema(item)
+    const responseShape = this._isGrpc && this._computeGrpcResponseSchema(item)
+      
     let requestSchema;
     if (requestShape) {
       const rn = this._getValue(requestShape, this.ns.aml.vocabularies.core.name) || this._getValue(requestShape, this.ns.w3.shacl.name);
@@ -1123,7 +1118,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
         responseSchema = rsn;
       }
     }
-    if (this._isGrpc && grpcStreamType && typeof this._getGrpcStreamTypeDisplayName === 'function') {
+    if (this._isGrpc && grpcStreamType) {
       method = this._getGrpcStreamTypeDisplayName(grpcStreamType);
     }
     return {
