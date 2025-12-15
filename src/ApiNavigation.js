@@ -549,7 +549,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
    */
   __amfChanged(api) {
     // Guard against initial empty-array AMF updates from data loaders
-    if (!api || (Array.isArray(api) && api.length === 0 || !this.amf[0])) {
+    if (!api || (Array.isArray(api) && (api.length === 0 || !api[0]))) {
       return;
     }
     let model = api;
@@ -630,6 +630,10 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     };
     if (!model) {
       return result;
+    }
+    // Initialize __operationById if not already initialized
+    if (!this.__operationById) {
+      this.__operationById = {};
     }
     result._typeIds = [];
     result._basePaths = [];
