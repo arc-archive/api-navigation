@@ -682,7 +682,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
             this.__operationById[op['@id']] = op;
           }
           const methodModel = this._createOperationModel(op);
-          // Replace method chip label with simplified stream type for gRPC
+          // Replace method chip label with simplified type for gRPC
           if (methodModel && methodModel.grpcStreamType) {
             // Map to HTTP method colors: unary→patch(violet), client→publish(green), server→subscribe(blue), bidi→options(gray)
             const colorMethodMap = {
@@ -693,8 +693,8 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
             };
             const labelMap = {
               'unary': 'UNARY',
-              'client_streaming': 'CLIENT STREAM',
-              'server_streaming': 'SERVER STREAM',
+              'client_streaming': 'CLIENT',
+              'server_streaming': 'SERVER',
               'bidi_streaming': 'BIDIRECTIONAL'
             };
             methodModel.method = labelMap[methodModel.grpcStreamType] || 'UNARY';
