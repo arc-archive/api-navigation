@@ -102,6 +102,3 @@ jobs:
       - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          draft: false
-          prerelease: false
-      - run: npm publish --provenance --access public
