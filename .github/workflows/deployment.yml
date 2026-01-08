@@ -11,9 +11,6 @@ on:
     branches:
       - master
       - main
-permissions:
-  contents: write
-  id-token: write
 jobs:
   test_linux:
     name: ${{ matrix.os }}
@@ -68,7 +65,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write  # Required for NPM Trusted Publishers (OIDC)
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -77,6 +73,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '18.x'
+          registry-url: 'https://registry.npmjs.org'
       - uses: actions/cache@v3
         with:
           path: ~/.npm
@@ -100,6 +97,11 @@ jobs:
           release_name: v${{ steps.package-node-version.outputs.version }}
           body: |
             ${{ steps.Changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+      - run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           draft: false
           prerelease: false
       - run: npm publish --provenance --access public
