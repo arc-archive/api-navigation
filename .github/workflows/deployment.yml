@@ -11,6 +11,9 @@ on:
     branches:
       - master
       - main
+permissions:
+  contents: write
+  id-token: write
 jobs:
   test_linux:
     name: ${{ matrix.os }}
