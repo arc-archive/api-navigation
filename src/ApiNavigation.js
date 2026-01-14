@@ -599,13 +599,6 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._types = data.types;
     this._security = data.securitySchemes;
     this._endpoints = data.endpoints;
-    try {
-      const webApi = this._computeApi(model);
-      const apiName = webApi ? this._getValue(webApi, this.ns.aml.vocabularies.core.name) : undefined;
-      if (this._renderSummary && apiName) {
-        this.summaryLabel = `${apiName} Overview`;
-      }
-    } catch (_) {}
     this._closeCollapses();
     setTimeout(() => {
       this._selectedChanged(this.selected);
@@ -1019,7 +1012,11 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
   _appendEndpointItem(item, target) {
     const result = {};
 
-    let name = this._getValue(item, this.ns.aml.vocabularies.core.name);
+    const voc = this.ns.aml.vocabularies;
+    let name = this._getValue(item, voc.core.displayName);
+    if (!name) {
+      name = this._getValue(item, voc.core.name);
+    }
     let path = /** @type string */ (this._getValue(
       item,
       this.ns.raml.vocabularies.apiContract.path
