@@ -63,3 +63,6 @@ coverage
 !demo/grpc-test.json
 
 .idea
+
+!/demo/grpc-test.json
+!/demo/grpc-test-compact.json

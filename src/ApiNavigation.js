@@ -3,10 +3,7 @@ import { LitElement, html } from 'lit-element';
 import { AmfHelperMixin } from '@api-components/amf-helper-mixin/amf-helper-mixin.js';
 import '@api-components/raml-aware/raml-aware.js';
 import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
-import {
-  keyboardArrowDown,
-  openInNew,
-} from '@advanced-rest-client/arc-icons/ArcIcons.js';
+import { codegenie, keyboardArrowDown, openInNew } from '@advanced-rest-client/icons/ArcIcons.js';
 import '@anypoint-web-components/anypoint-collapse/anypoint-collapse.js';
 import httpMethodStyles from '@api-components/http-method-label/http-method-label-common-styles.js';
 import navStyles from './Styles.js';
@@ -238,8 +235,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       allowPaths: { type: Boolean },
       /**
        * If this value is set, then the navigation component will sort the list
-       * of endpoints based on the `path` value of the endpoint, keeping the order
-       * of which endpoint was first in the list, relative to each other
+       * of endpoints alphabetically based on the `path` value of the endpoint
        */
       rearrangeEndpoints: { type: Boolean },
       /**
@@ -258,6 +254,11 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
        * No overview as a separated element. Overview can be seen by clicking the endpoint label.
        */
       noOverview: { type: Boolean },
+      /**
+       * When set, avoiids truncating and indentation of endpoint paths.
+       * Instead, the full path for each endpoint will be rendered.
+       */
+      renderFullPaths: { type: Boolean },
     };
   }
 
@@ -442,6 +443,34 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._items = null;
   }
 
+  set rearrangeEndpoints(value) {
+    const old = this.__rearrangeEndpoints;
+    if (old === value) {
+      return;
+    }
+    this.__rearrangeEndpoints = value;
+    this.requestUpdate('rearrangeEndpoints', old);
+    this.__amfChanged(this.amf);
+  }
+
+  get rearrangeEndpoints() {
+    return this.__rearrangeEndpoints;
+  }
+
+  set renderFullPaths(value) {
+    const old = this._renderFullPaths;
+    if (old === value) {
+      return;
+    }
+    this._renderFullPaths = value;
+    this.requestUpdate('renderFullPaths', old);
+    this.__amfChanged(this.amf);
+  }
+
+  get renderFullPaths() {
+    return this._renderFullPaths;
+  }
+
   constructor() {
     super();
 
@@ -450,6 +479,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this.summary = false;
     this.noink = false;
     this.allowPaths = false;
+    this._isGrpc = false;
     this.compatibility = false;
     this.rearrangeEndpoints = false;
     this.indentSize = 8;
@@ -458,6 +488,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._openedOperations = [];
     this._updatedOpenedOperations = true;
     this.noOverview = false;
+    this.renderFullPaths = false;
 
     this._navigationChangeHandler = this._navigationChangeHandler.bind(this);
     this._focusHandler = this._focusHandler.bind(this);
@@ -517,7 +548,8 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
    * @override
    */
   __amfChanged(api) {
-    if (!api) {
+    // Guard against initial empty-array AMF updates from data loaders
+    if (!api || (Array.isArray(api) && (api.length === 0 || !api[0]))) {
       return;
     }
     let model = api;
@@ -525,6 +557,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       [model] = model;
     }
     let data = {};
+    this.__operationById = {};
     let isFragment = true;
     this._items = null;
     const moduleKey = this._getAmfKey(this.ns.aml.vocabularies.document.Module);
@@ -606,6 +639,10 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     };
     if (!model) {
       return result;
+    }
+    // Initialize __operationById if not already initialized
+    if (!this.__operationById) {
+      this.__operationById = {};
     }
     result._typeIds = [];
     result._basePaths = [];
@@ -824,9 +861,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
   }
 
   /**
-   * Re-arrange the endpoints in relative order to each other, keeping
-   * the first endpoints to appear first, and the last endpoints to appear
-   * last
+   * Sort endpoints alphabetically based on path
    * @param {EndpointItem[]} endpoints
    * @return {EndpointItem[]}
    */
@@ -834,82 +869,21 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     if (!endpoints) {
       return null;
     }
+    const pathKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.path);
+    return [...endpoints].sort((a,b) => {
+      const pathA = this._getValue(a, pathKey);
+      const pathB = this._getValue(b, pathKey);
 
-    const merge = (left, right) => {
-      const resultArray = [];
-      let leftIndex = 0;
-      let rightIndex = 0;
-
-      while (leftIndex < left.length && rightIndex < right.length) {
-        const leftPath = this._getValue(
-          left[leftIndex],
-          this.ns.raml.vocabularies.apiContract.path
-        );
-        const rightPath = this._getValue(
-          right[rightIndex],
-          this.ns.raml.vocabularies.apiContract.path
-        );
-        if (leftPath < rightPath) {
-          resultArray.push(left[leftIndex]);
-          leftIndex++;
-        } else {
-          resultArray.push(right[rightIndex]);
-          rightIndex++;
-        }
+      if (pathA < pathB){
+        return -1;
       }
 
-      return resultArray
-        .concat(left.slice(leftIndex))
-        .concat(right.slice(rightIndex));
-    };
-
-    const mergeSort = unsortedArray => {
-      if (unsortedArray.length <= 1) {
-        return unsortedArray;
+      if (pathA > pathB){
+        return 1;
       }
-      const middle = Math.floor(unsortedArray.length / 2);
 
-      const left = unsortedArray.slice(0, middle);
-      const right = unsortedArray.slice(middle);
-
-      return merge(mergeSort(left), mergeSort(right));
-    };
-
-    const listMap = this._createListMap(endpoints);
-
-    return Object.keys(listMap)
-      .map(key => mergeSort(listMap[key]))
-      .reduce((acc, value) => acc.concat(value), []);
-  }
-
-  /**
-   * Transforms a list of endpoints into a map that goes from
-   * string -> Object[], representing the first part of the endpoint
-   * path, and the list of endpoints that match it. The idea is
-   * to have a map for this, respecting the order each
-   * endpoint is first found at, so that re-arranging the
-   * endpoints keeps them in the same relative order to each
-   * other
-   *
-   * @param {EndpointItem[]} endpoints
-   * @return {object}
-   */
-  _createListMap(endpoints) {
-    const map = {};
-    const getPathInit = endpoint =>
-      /** @type string */ (this._getValue(
-        endpoint,
-        this.ns.raml.vocabularies.apiContract.path
-      )).split('/')[1];
-    endpoints.forEach(endpoint => {
-      const pathInit = getPathInit(endpoint);
-      if (map[pathInit]) {
-        map[pathInit].push(endpoint);
-      } else {
-        map[pathInit] = [endpoint];
-      }
+      return 0;
     });
-    return map;
   }
 
   /**
@@ -1077,7 +1051,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     const parts = tmpPath.split('/');
     let indent = 0;
     target._basePaths[target._basePaths.length] = path;
-    if (parts.length > 1) {
+    if (parts.length > 1 && !this.renderFullPaths) {
       const lowerParts = parts.slice(0, parts.length - 1);
       if (lowerParts.length) {
         for (let i = lowerParts.length - 1; i >= 0; i--) {
@@ -1111,7 +1085,13 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     const id = item['@id'];
     const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
     const operations = this._ensureArray(item[key]) || [];
-    const methods = operations.map(op => this._createOperationModel(op));
+    const methods = operations.map(op => {
+      const model = this._createOperationModel(op);
+      if (op && op['@id']) {
+        this.__operationById[op['@id']] = op;
+      }
+      return model;
+    });
     result.label = String(name);
     result.id = id;
     result.indent = indent;
@@ -1132,11 +1112,37 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     ));
     const methodKey = this.ns.aml.vocabularies.apiContract.method;
     const id = item['@id'];
-    const method = /** @type string */ (this._getValue(item, methodKey));
+    let method = /** @type string */ (this._getValue(item, methodKey));
+    // Populate gRPC fields via helpers when available
+    /** @type {'unary'|'server_streaming'|'client_streaming'|'bidi_streaming'|undefined} */
+    const grpcStreamType = this._isGrpc &&  /** @type any */ (this._getGrpcStreamType(item))
+    const requestShape = this._isGrpc && this._computeGrpcRequestSchema(item)
+    const responseShape = this._isGrpc && this._computeGrpcResponseSchema(item)
+      
+    let requestSchema;
+    if (requestShape) {
+      const rn = this._getValue(requestShape, this.ns.aml.vocabularies.core.name) || this._getValue(requestShape, this.ns.w3.shacl.name);
+      if (typeof rn === 'string') {
+        requestSchema = rn;
+      }
+    }
+    let responseSchema;
+    if (responseShape) {
+      const rsn = this._getValue(responseShape, this.ns.aml.vocabularies.core.name) || this._getValue(responseShape, this.ns.w3.shacl.name);
+      if (typeof rsn === 'string') {
+        responseSchema = rsn;
+      }
+    }
+    if (this._isGrpc && grpcStreamType) {
+      method = this._getGrpcStreamTypeDisplayName(grpcStreamType);
+    }
     return {
       label,
       id,
       method,
+      grpcStreamType,
+      requestSchema,
+      responseSchema,
     };
   }
 
@@ -1236,6 +1242,9 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     if (node.dataset.shape === 'method' || node.dataset.shape === 'endpoint') {
       if (!this._openedOperations.includes(id)) {
         this.toggleOperations(id)
+      }
+      if (collapse && !this._openedOperations.includes(collapse.dataset.apiId)) {
+        this.toggleOperations(collapse.dataset.apiId);
       }
     } else if (collapse && !collapse.opened) {
       collapse.opened = true;
@@ -1442,7 +1451,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     }
     node.classList.add('passive-selected');
     this.__hasPassiveSelection = true;
-    const collapse = /** @type IronCollapseElement */ (node.parentElement);
+    const collapse = /** @type AnypointCollapseElement */ (node.parentElement);
     if (!collapse.opened) {
       collapse.opened = true;
     }
@@ -1941,6 +1950,36 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
   }
 
   /**
+   * Computes whether each method in an endpoint has an associated "agent" by inspecting the AMF model.
+   * This function iterates through the methods of a given endpoint, finds the corresponding AMF operation,
+   * and checks for the presence of an agent. The `hasAgent` property is then set on the method item.
+   *
+   * @param {EndpointItem} item The endpoint item containing the methods to be processed.
+   * @returns {EndpointItem} The same endpoint item with the `hasAgent` flag updated on its methods.
+   */
+  _computeAgentsForMethods(item) {
+    const webApi = this._computeWebApi(this.amf);
+    if (!webApi) {
+      return item;
+    }
+    const operations = this._computeOperations(webApi, item.id);
+    if (!operations) {
+      return item;
+    }
+
+    item.methods.forEach(method => {
+      // Find the corresponding AMF operation for the current method item.
+      const operation = operations.find(op => op['@id'] === method.id);
+      if (operation) {
+        // Check if the operation has an agent defined in the AMF model.
+        const agent = this._computeAgents(operation);
+        method.hasAgent = !!(agent && agent.length > 0);
+      }
+    });
+    return item;
+  }
+
+  /**
    * Renders a template for endpoints and methods list.
    * @return {TemplateResult|string}
    */
@@ -1949,12 +1988,26 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       return '';
     }
     const items = this._getFilteredEndpoints();
+
+    if (items) {
+      items.forEach(item => {
+        this._computeAgentsForMethods(item);
+      });
+    }
+
     if (!items || !items.length) {
       return '';
     }
     const toggleState = this.endpointsOpened ? 'Expanded' : 'Collapsed';
 
-    const sectionLabel = this._isWebAPI(this.amf) ? 'Endpoints' : 'Channels';
+    let sectionLabel;
+    if (this._isGrpc) {
+      sectionLabel = 'Methods';
+    } else if (this._isWebAPI(this.amf)) {
+      sectionLabel = 'Endpoints';
+    } else {
+      sectionLabel = 'Channels';
+    }
     const lowercaseSectionLabel = sectionLabel.toLowerCase();
 
     return html` <section
@@ -1977,6 +2030,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
           .noink="${this.noink}"
           ?compatibility="${this.compatibility}"
           tabindex="-1"
+          data-toggle="endpoints"
         >
           <span class="icon" aria-label="${toggleState}"
             >${keyboardArrowDown}</span
@@ -2001,7 +2055,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
    */
   _overviewTemplate(item) {
     if (this.noOverview) {
-      return '';
+      return html``;
     }
     return html`<div
         part="api-navigation-list-item"
@@ -2010,6 +2064,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
         tabindex="0"
         data-api-id="${item.id}"
         data-shape="endpoint"
+        data-endpoint-overview="${item.path}"
         @click="${this._itemClickHandler}"
         style="${this._computeMethodPadding(item.indent, this.indentSize)}"
         >
@@ -2025,10 +2080,10 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     const {noOverview} = this;
 
     return html`<div class="path-details">
-        ${noOverview ? 
-      html`<div class="endpoint-name-overview" @click="${this._itemClickHandler}" data-api-id="${item.id}" data-shape="endpoint">${item.label}</div>` 
+        ${noOverview ?
+      html`<div class="endpoint-name-overview" @click="${this._itemClickHandler}" data-api-id="${item.id}" data-shape="endpoint">${item.label}</div>`
       : html`<div class="endpoint-name">${item.label}</div>`}
-        
+
         ${computeRenderPath(this.allowPaths, item.renderPath)
       ? html`<div class="path-name">${item.path}</div>`
       : undefined}
@@ -2221,6 +2276,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       return '';
     }
     const toggleState = this.typesOpened ? 'Expanded' : 'Collapsed';
+    const typesLabel = this._isGrpc ? 'Messages' : 'Types';
 
     return html`
       <section class="types" ?data-opened="${this.typesOpened}">
@@ -2230,7 +2286,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
           @click="${this._toggleSectionHandler}"
           title="Toggle types list"
         >
-          <div class="title-h3">Types</div>
+          <div class="title-h3">${typesLabel}</div>
           <anypoint-icon-button
             part="toggle-button"
             class="toggle-button"
@@ -2238,6 +2294,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
             aria-label="Toggle types"
             ?compatibility="${this.compatibility}"
             tabindex="-1"
+            data-toggle="types"
           >
             <span class="icon" aria-label="${toggleState}"
               >${keyboardArrowDown}</span
@@ -2255,6 +2312,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
                   tabindex="0"
                   data-api-id="${item.id}"
                   data-shape="type"
+                  data-type-name="${item.label}"
                   @click="${this._itemClickHandler}"
                 >
                   ${item.label}
@@ -2297,6 +2355,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
           aria-label="Toggle security"
           ?compatibility="${this.compatibility}"
           tabindex="-1"
+          data-toggle="security"
         >
           <span class="icon" aria-label="${toggleState}"
             >${keyboardArrowDown}</span
@@ -2313,6 +2372,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
               tabindex="0"
               data-api-id="${item.id}"
               data-shape="security"
+              data-security-name="${item.label}"
               @click="${this._itemClickHandler}"
             >
               ${item.label}

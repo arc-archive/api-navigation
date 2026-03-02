@@ -228,6 +228,13 @@ export declare class ApiNavigation {
   noOverview: boolean;
 
   /**
+   * When set, avoiids truncating and indentation of endpoint paths.
+   * Instead, the full path for each endpoint will be rendered.
+   * @attribute
+   */
+  renderFullPaths: boolean;
+
+  /**
    * true when `_docs` property is set with values
    */
   get hasDocs(): boolean;
@@ -323,9 +330,7 @@ export declare class ApiNavigation {
   _traverseEncodes(model: object, target: TargetModel): void;
 
   /**
-   * Re-arrange the endpoints in relative order to each other, keeping
-   * the first endpoints to appear first, and the last endpoints to appear
-   * last
+   * Sort endpoints alphabetically based on path
    */
   _rearrangeEndpoints(endpoints: EndpointItem[]): EndpointItem[];
 
@@ -383,6 +388,13 @@ export declare class ApiNavigation {
    */
   _createOperationModel(item: object): MethodItem;
 
+  /** Detects whether current API is gRPC by inspecting media types */
+  __detectGrpcInternal(): boolean;
+  /** Maps AMF operation to gRPC stream type, defaults to 'unary' */
+  __getGrpcStreamTypeInternal(operation: object): 'unary' | 'server_streaming' | 'client_streaming' | 'bidi_streaming';
+  /** Returns request/response schema names for an operation */
+  __getOperationSchemasInternal(operationOrId: object | string): { request?: string; response?: string } | undefined;
+  
   /**
    * Click handler for section name item.
    * Toggles the view.
