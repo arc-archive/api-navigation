@@ -253,4 +253,29 @@ export default css`
     );
     color: var(--http-method-label-subscribe-color, #3490dc);
   }
+
+  .stream-type-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-right: 8px;
+    vertical-align: middle;
+    /* Colores ya heredados de .method-label[data-method] */
+  }
+
+  .grpc-method-name {
+    font-size: 13px;
+    font-weight: 400;
+    vertical-align: middle;
+  }
+
+  /* Asegurar que el badge NO tenga brackets */
+  .stream-type-badge::before,
+  .stream-type-badge::after {
+    content: none;
+  }
 `;

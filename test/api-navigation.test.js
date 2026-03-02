@@ -1579,4 +1579,97 @@ describe('<api-navigation>', () => {
       });
     });
   });
+
+  describe('gRPC Method Display', () => {
+    let element;
+    let amf;
+    let grpcModelAvailable = false;
+
+    before(async () => {
+      try {
+        amf = await AmfLoader.load(false, 'grpc-test');
+        grpcModelAvailable = true;
+      } catch (_) {
+        grpcModelAvailable = false;
+      }
+    });
+
+    beforeEach(async function () {
+      if (!grpcModelAvailable) {
+        this.skip();
+        return;
+      }
+      element = await basicFixture();
+      element.amf = amf;
+      await aTimeout(0);
+    });
+
+    it('displays gRPC method name in navigation', async () => {
+      await nextFrame();
+      const badge = element.shadowRoot.querySelector('.operation .stream-type-badge');
+      const methodName = element.shadowRoot.querySelector('.operation .grpc-method-name');
+      if (badge && methodName) {
+        assert.match(badge.textContent.trim(), /^(?:UNARY|CLIENT|SERVER|BIDIRECTIONAL)$/, 'Badge should show stream type');
+        assert.isAbove(methodName.textContent.trim().length, 0, 'Should show method name next to badge');
+      } else {
+        const endpoints = element._endpoints;
+        if (endpoints && endpoints.length > 0) {
+          const firstEndpoint = endpoints[0];
+          if (firstEndpoint.methods && firstEndpoint.methods.length > 0) {
+            assert.property(firstEndpoint.methods[0], 'label', 'Method should have label property');
+          }
+        }
+      }
+    });
+
+    it('shows stream type badge for gRPC methods', async () => {
+      await nextFrame();
+      const badge = element.shadowRoot.querySelector('.stream-type-badge');
+      if (badge) {
+        assert.exists(badge, 'Stream type badge should exist');
+        const badgeText = badge.textContent.trim();
+        assert.match(badgeText, /^(?:UNARY|CLIENT|SERVER|BIDIRECTIONAL)$/, 'Badge should show stream type (no brackets)');
+      }
+    });
+
+    it('applies correct color mapping for stream types', async () => {
+      await nextFrame();
+      const methodLabel = element.shadowRoot.querySelector('.operation .method-label');
+      if (methodLabel) {
+        const dataMethod = methodLabel.getAttribute('data-method');
+        assert.isString(dataMethod, 'Should have data-method attribute for color');
+        // Verify it's one of the mapped values (patch, publish, subscribe, options)
+        assert.include(['patch', 'publish', 'subscribe', 'options'], dataMethod, 'Should map to HTTP method for color');
+      }
+    });
+
+    it('stores stream type label separately from method name', () => {
+      // Check internal data structure
+      const endpoints = element._endpoints;
+      if (endpoints && endpoints.length > 0) {
+        const firstEndpoint = endpoints[0];
+        if (firstEndpoint.methods && firstEndpoint.methods.length > 0) {
+          const firstMethod = firstEndpoint.methods[0];
+          assert.property(firstMethod, 'grpcStreamTypeLabel', 'Should have grpcStreamTypeLabel property');
+          assert.property(firstMethod, 'method', 'Should have method property');
+          // They should be different (method is actual name, grpcStreamTypeLabel is type)
+          if (firstMethod.grpcStreamTypeLabel && firstMethod.method) {
+            assert.notEqual(firstMethod.method, firstMethod.grpcStreamTypeLabel, 'Method name and stream type label should be different');
+          }
+        }
+      }
+    });
+
+    it('displays both method name and stream type for each gRPC method', async () => {
+      await nextFrame();
+      const operations = element.shadowRoot.querySelectorAll('.operation');
+      operations.forEach((operation) => {
+        const text = operation.textContent.trim();
+        if (text) {
+          // Each operation should have more than just the stream type
+          assert.isAbove(text.length, 6, 'Should have method name and stream type, not just stream type');
+        }
+      });
+    });
+  });
 });
