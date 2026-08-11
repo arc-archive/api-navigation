@@ -1110,9 +1110,9 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       item,
       this.ns.aml.vocabularies.core.name
     ));
-    const methodKey = this.ns.aml.vocabularies.apiContract.method;
     const id = item['@id'];
-    let method = /** @type string */ (this._getValue(item, methodKey));
+    let method = /** @type string */ (this._computeOperationMethod(item));
+    const methodForColor = this._operationColorMethod(method);
     // Populate gRPC fields via helpers when available
     /** @type {'unary'|'server_streaming'|'client_streaming'|'bidi_streaming'|undefined} */
     const grpcStreamType = this._isGrpc &&  /** @type any */ (this._getGrpcStreamType(item))
@@ -1134,12 +1134,19 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       }
     }
     if (this._isGrpc && grpcStreamType) {
+      // `method` becomes a human-readable stream-type display name here; nav
+      // has no gRPC-specific color mapper (`_getMethodForColor`) at this layer
+      // — the caller (`_collectGrpcNavigationData`) overwrites `methodForColor`
+      // with its own stream-type→color map afterwards, so we deliberately do
+      // NOT invent a new mapping here. Leave `methodForColor` at its pre-gRPC
+      // value.
       method = this._getGrpcStreamTypeDisplayName(grpcStreamType);
     }
     return {
       label,
       id,
       method,
+      methodForColor,
       kind: this._computeOperationKind(item),
       grpcStreamType,
       requestSchema,
@@ -1335,7 +1342,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     }
     return (
       (item.label || '').toLowerCase().indexOf(this.__effectiveQuery) !== -1 ||
-      item.method.indexOf(this.__effectiveQuery) !== -1
+      (item.method || '').indexOf(this.__effectiveQuery) !== -1
     );
   }
 
@@ -1687,7 +1694,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
         const method = eMethods[j];
         if (
           (method.label || '').toLowerCase().indexOf(q) !== -1 ||
-          method.method.indexOf(q) !== -1
+          (method.method || '').indexOf(q) !== -1
         ) {
           methods[methods.length] = method;
         }
