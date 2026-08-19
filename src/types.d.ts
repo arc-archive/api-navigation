@@ -40,6 +40,7 @@ export declare interface TargetModel {
   types?: TypeItem[];
   securitySchemes?: SecurityItem[];
   endpoints?: EndpointItem[];
+  webhooks?: EndpointItem[];
   _typeIds?: string[];
   _basePaths?: string[];
 }

@@ -202,6 +202,14 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
        */
       endpointsOpened: { type: Boolean, reflect: true },
       /**
+       * Computed list of top-level webhook items in the API (OAS 3.1/3.2).
+       */
+      _webhooks: { type: Array },
+      /**
+       * Determines and changes state of webhooks panel.
+       */
+      webhooksOpened: { type: Boolean, reflect: true },
+      /**
        * If true, the element will not produce a ripple effect when interacted with via the pointer.
        */
       noink: { type: Boolean, reflect: true },
@@ -374,6 +382,14 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
   get hasEndpoints() {
     const { _endpoints } = this;
     return !!(_endpoints && _endpoints.length);
+  }
+
+  /**
+   * @return {Boolean} true when `_webhooks` property is set with values
+   */
+  get hasWebhooks() {
+    const { _webhooks } = this;
+    return !!(_webhooks && _webhooks.length);
   }
 
   /**
@@ -615,6 +631,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._types = data.types;
     this._security = data.securitySchemes;
     this._endpoints = data.endpoints;
+    this._webhooks = data.webhooks;
     this._closeCollapses();
     setTimeout(() => {
       this._selectedChanged(this.selected);
@@ -636,6 +653,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       types: [],
       securitySchemes: [],
       endpoints: [],
+      webhooks: [],
     };
     if (!model) {
       return result;
@@ -649,6 +667,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._traverseDeclarations(model, result);
     this._traverseReferences(model, result);
     this._traverseEncodes(model, result);
+    this._traverseWebhooks(model, result);
     delete result._typeIds;
     delete result._basePaths;
     return result;
@@ -861,6 +880,30 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
   }
 
   /**
+   * Traverses the top-level `apiContract#webhooks` collection (OAS 3.1/3.2) and
+   * appends each webhook to a distinct `webhooks` section. Webhook nodes are
+   * `apiContract#EndPoint` elements identical to regular endpoints; the only
+   * distinction is the collection they are reached through, so they are routed
+   * here rather than into `endpoints`. The event-name label falls out of
+   * `_appendEndpointItem` for free: a webhook has no `core#name`, so the label
+   * defaults to its path (the event name, e.g. `newPet`) with `renderPath=false`.
+   *
+   * @param {object} model AMF model
+   * @param {TargetModel} target The target to which append values.
+   */
+  _traverseWebhooks(model, target) {
+    const data = this._computeApi(model);
+    if (!data) {
+      return;
+    }
+    const wKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.webhooks);
+    const webhooks = this._ensureArray(data[wKey]);
+    if (webhooks) {
+      webhooks.forEach(item => this._appendEndpointItem(item, target, 'webhooks'));
+    }
+  }
+
+  /**
    * Sort endpoints alphabetically based on path
    * @param {EndpointItem[]} endpoints
    * @return {EndpointItem[]}
@@ -1030,8 +1073,11 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
    *
    * @param {any} item Endpoint item declaration
    * @param {TargetModel} target
+   * @param {string=} collectionKey Target collection to push the item into.
+   * Defaults to `endpoints`; webhooks pass `webhooks` to render in their own
+   * section (OAS 3.1/3.2) without leaking into the Endpoints list.
    */
-  _appendEndpointItem(item, target) {
+  _appendEndpointItem(item, target, collectionKey = 'endpoints') {
     const result = {};
 
     let name = this._getValue(item, this.ns.aml.vocabularies.core.name);
@@ -1096,7 +1142,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     result.id = id;
     result.indent = indent;
     result.methods = methods;
-    target.endpoints.push(result);
+    target[collectionKey].push(result);
   }
 
   /**
@@ -1634,7 +1680,25 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
    * @returns {EndpointItem[]|undefined} Filtered list of endpoints
    */
   _getFilteredEndpoints() {
-    const value = this._endpoints;
+    return this._filterEndpointItems(this._endpoints);
+  }
+
+  /**
+   * Returns a list of webhooks to render, applying the same query filter used
+   * for endpoints. Webhook items share the endpoint view-model shape.
+   * @returns {EndpointItem[]|undefined} Filtered list of webhooks
+   */
+  _getFilteredWebhooks() {
+    return this._filterEndpointItems(this._webhooks);
+  }
+
+  /**
+   * Filters a list of endpoint-shaped items (endpoints or webhooks) by the
+   * current query. When no query is set the input list is returned unchanged.
+   * @param {EndpointItem[]} value Endpoint-shaped items to filter
+   * @returns {EndpointItem[]|undefined} Filtered list
+   */
+  _filterEndpointItems(value) {
     if (!value || !value.length) {
       return undefined;
     }
@@ -2050,6 +2114,68 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
   }
 
   /**
+   * Renders a template for the top-level webhooks list (OAS 3.1/3.2).
+   * Mirrors `_endpointsTemplate` but as a distinct "Webhooks" section, sibling
+   * to "Endpoints". Webhook operations reuse the endpoint/method item templates.
+   * @return {TemplateResult|string}
+   */
+  _webhooksTemplate() {
+    if (!this.hasWebhooks) {
+      return '';
+    }
+    const items = this._getFilteredWebhooks();
+
+    if (items) {
+      items.forEach(item => {
+        this._computeAgentsForMethods(item);
+      });
+    }
+
+    if (!items || !items.length) {
+      return '';
+    }
+    const toggleState = this.webhooksOpened ? 'Expanded' : 'Collapsed';
+
+    return html` <section
+      class="webhooks"
+      ?data-opened="${this.webhooksOpened}"
+    >
+      <div
+        class="section-title"
+        data-section="webhooks"
+        @click="${this._toggleSectionHandler}"
+        title="Toggle webhooks list"
+        aria-haspopup="true"
+        role="menuitem"
+      >
+        <div class="title-h3">Webhooks</div>
+        <anypoint-icon-button
+          part="toggle-button"
+          class="toggle-button"
+          aria-label="Toggle webhooks"
+          .noink="${this.noink}"
+          ?compatibility="${this.compatibility}"
+          tabindex="-1"
+          data-toggle="webhooks"
+        >
+          <span class="icon" aria-label="${toggleState}"
+            >${keyboardArrowDown}</span
+          >
+        </anypoint-icon-button>
+      </div>
+      <anypoint-collapse
+        .opened="${this.webhooksOpened}"
+        aria-hidden="${this.webhooksOpened ? 'false' : 'true'}"
+        role="menu"
+      >
+        <div class="children">
+          ${items.map(item => this._endpointTemplate(item))}
+        </div>
+      </anypoint-collapse>
+    </section>`;
+  }
+
+  /**
    * @param {EndpointItem} item
    * @return {TemplateResult} Template for an endpoint overview.
    */
@@ -2419,7 +2545,8 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
               </div>
             </section>`
           : undefined}
-        ${this._endpointsTemplate()} ${this._documentationTemplate()}
+        ${this._endpointsTemplate()} ${this._webhooksTemplate()}
+        ${this._documentationTemplate()}
         ${this._typesTemplate()} ${this._securityTemplate()}
       </div> `;
   }
