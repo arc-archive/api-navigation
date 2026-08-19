@@ -1673,8 +1673,8 @@ describe('<api-navigation>', () => {
     });
   });
 
-  describe('QUERY method (OAS 3.2)', () => {
-    // OAS 3.2 introduces the QUERY HTTP method. AMF emits its
+  describe('OAS 3.2 methods (QUERY, COPY, MOVE)', () => {
+    // OAS 3.2 introduces the QUERY, COPY and MOVE HTTP methods. AMF emits their
     // `apiContract#method` value verbatim in upper case ("QUERY"), unlike the
     // classic verbs which arrive lower case ("get"). The navigation renders
     // `data-method` straight from that raw value, so the color override keys on
@@ -1708,6 +1708,14 @@ describe('<api-navigation>', () => {
               '@id': 'amf://id#12',
               '@type': [OPERATION_T],
               [METHOD]: [{ '@value': 'QUERY' }],
+            }, {
+              '@id': 'amf://id#13',
+              '@type': [OPERATION_T],
+              [METHOD]: [{ '@value': 'COPY' }],
+            }, {
+              '@id': 'amf://id#14',
+              '@type': [OPERATION_T],
+              [METHOD]: [{ '@value': 'MOVE' }],
             }],
           }],
         }],
@@ -1740,6 +1748,14 @@ describe('<api-navigation>', () => {
 
     it('does not flag a QUERY-only REST API as gRPC', () => {
       assert.isFalse(element._isGrpc, 'the API is treated as REST, not gRPC');
+    });
+
+    it('renders COPY and MOVE operations with their raw data-method', () => {
+      const methods = Array.from(
+        element.shadowRoot.querySelectorAll('.operation .method-label')
+      ).map((node) => node.getAttribute('data-method'));
+      assert.include(methods, 'COPY', 'a method-label carries the raw COPY value');
+      assert.include(methods, 'MOVE', 'a method-label carries the raw MOVE value');
     });
   });
 });
