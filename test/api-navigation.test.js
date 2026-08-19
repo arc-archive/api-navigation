@@ -1672,4 +1672,74 @@ describe('<api-navigation>', () => {
       });
     });
   });
+
+  describe('QUERY method (OAS 3.2)', () => {
+    // OAS 3.2 introduces the QUERY HTTP method. AMF emits its
+    // `apiContract#method` value verbatim in upper case ("QUERY"), unlike the
+    // classic verbs which arrive lower case ("get"). The navigation renders
+    // `data-method` straight from that raw value, so the color override keys on
+    // both casings. This inline expanded model (no `@context`) keeps the test
+    // independent of the model generator.
+    const DOC = 'http://a.ml/vocabularies/document#Document';
+    const ENCODES = 'http://a.ml/vocabularies/document#encodes';
+    const WEBAPI = 'http://a.ml/vocabularies/apiContract#WebAPI';
+    const ENDPOINT = 'http://a.ml/vocabularies/apiContract#endpoint';
+    const ENDPOINT_T = 'http://a.ml/vocabularies/apiContract#EndPoint';
+    const OPERATION_T = 'http://a.ml/vocabularies/apiContract#Operation';
+    const SUPPORTED_OP = 'http://a.ml/vocabularies/apiContract#supportedOperation';
+    const PATH = 'http://a.ml/vocabularies/apiContract#path';
+    const METHOD = 'http://a.ml/vocabularies/apiContract#method';
+
+    function buildQueryModel() {
+      return {
+        '@type': [DOC],
+        [ENCODES]: [{
+          '@id': 'amf://id#1',
+          '@type': [WEBAPI],
+          [ENDPOINT]: [{
+            '@id': 'amf://id#10',
+            '@type': [ENDPOINT_T],
+            [PATH]: [{ '@value': '/pets' }],
+            [SUPPORTED_OP]: [{
+              '@id': 'amf://id#11',
+              '@type': [OPERATION_T],
+              [METHOD]: [{ '@value': 'get' }],
+            }, {
+              '@id': 'amf://id#12',
+              '@type': [OPERATION_T],
+              [METHOD]: [{ '@value': 'QUERY' }],
+            }],
+          }],
+        }],
+      };
+    }
+
+    let element;
+
+    beforeEach(async () => {
+      element = await basicFixture();
+      element.amf = buildQueryModel();
+      await aTimeout(0);
+      await nextFrame();
+    });
+
+    it('renders a QUERY operation with data-method="QUERY"', () => {
+      const labels = Array.from(
+        element.shadowRoot.querySelectorAll('.operation .method-label')
+      );
+      const methods = labels.map((node) => node.getAttribute('data-method'));
+      assert.include(methods, 'QUERY', 'a method-label carries the raw QUERY value');
+    });
+
+    it('keeps the raw AMF casing (does not lower-case QUERY)', () => {
+      const methods = Array.from(
+        element.shadowRoot.querySelectorAll('.operation .method-label')
+      ).map((node) => node.getAttribute('data-method'));
+      assert.notInclude(methods, 'query', 'QUERY is not silently lower-cased');
+    });
+
+    it('does not flag a QUERY-only REST API as gRPC', () => {
+      assert.isFalse(element._isGrpc, 'the API is treated as REST, not gRPC');
+    });
+  });
 });

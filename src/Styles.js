@@ -254,6 +254,15 @@ export default css`
     color: var(--http-method-label-subscribe-color, #3490dc);
   }
 
+  .method-label[data-method='query'],
+  .method-label[data-method='QUERY'] {
+    background-color: var(
+      --http-method-label-query-background-color,
+      rgba(15, 157, 157, 0.12)
+    );
+    color: var(--http-method-label-query-color, #0f9d9d);
+  }
+
   .stream-type-badge {
     display: inline-block;
     padding: 4px 8px;
