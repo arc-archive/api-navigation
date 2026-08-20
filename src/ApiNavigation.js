@@ -1110,9 +1110,9 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       item,
       this.ns.aml.vocabularies.core.name
     ));
-    const methodKey = this.ns.aml.vocabularies.apiContract.method;
     const id = item['@id'];
-    let method = /** @type string */ (this._getValue(item, methodKey));
+    let method = /** @type string */ (this._computeOperationMethod(item));
+    const methodForColor = this._operationColorMethod(method);
     // Populate gRPC fields via helpers when available
     /** @type {'unary'|'server_streaming'|'client_streaming'|'bidi_streaming'|undefined} */
     const grpcStreamType = this._isGrpc &&  /** @type any */ (this._getGrpcStreamType(item))
@@ -1134,16 +1134,45 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       }
     }
     if (this._isGrpc && grpcStreamType) {
+      // `method` becomes a human-readable stream-type display name here; nav
+      // has no gRPC-specific color mapper (`_getMethodForColor`) at this layer
+      // — the caller (`_collectGrpcNavigationData`) overwrites `methodForColor`
+      // with its own stream-type→color map afterwards, so we deliberately do
+      // NOT invent a new mapping here. Leave `methodForColor` at its pre-gRPC
+      // value.
       method = this._getGrpcStreamTypeDisplayName(grpcStreamType);
     }
     return {
       label,
       id,
       method,
+      methodForColor,
+      kind: this._computeOperationKind(item),
       grpcStreamType,
       requestSchema,
       responseSchema,
     };
+  }
+
+  /**
+   * Groups an endpoint's operations by their OAS 3.2 `operationKind`.
+   * @param {MethodItem[]} methods List of method view-models for an endpoint
+   * @return {{label: string, methods: MethodItem[]}[]} Non-empty groups, in fixed order.
+   */
+  _groupMethodsByKind(methods) {
+    const buckets = { standard: [], query: [], additionalOperation: [] };
+    (methods || []).forEach((m) => {
+      const k = Object.prototype.hasOwnProperty.call(buckets, m.kind) ? m.kind : 'standard';
+      buckets[k].push(m);
+    });
+    const order = [
+      { key: 'standard', label: 'Operations' },
+      { key: 'query', label: 'Query' },
+      { key: 'additionalOperation', label: 'Additional operations' },
+    ];
+    return order
+      .filter((g) => buckets[g.key].length)
+      .map((g) => ({ key: g.key, label: g.label, methods: buckets[g.key] }));
   }
 
   /**
@@ -1313,7 +1342,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     }
     return (
       (item.label || '').toLowerCase().indexOf(this.__effectiveQuery) !== -1 ||
-      item.method.indexOf(this.__effectiveQuery) !== -1
+      (item.method || '').indexOf(this.__effectiveQuery) !== -1
     );
   }
 
@@ -1665,7 +1694,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
         const method = eMethods[j];
         if (
           (method.label || '').toLowerCase().indexOf(q) !== -1 ||
-          method.method.indexOf(q) !== -1
+          (method.method || '').indexOf(q) !== -1
         ) {
           methods[methods.length] = method;
         }
@@ -2132,9 +2161,17 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
         ?endpoint-opened="${isEndpointOpened}"
       >
         ${this._overviewTemplate(item)}
-        ${item.methods.map(methodItem =>
-          this._methodTemplate(item, methodItem)
-        )}
+        ${(() => {
+          const groups = this._groupMethodsByKind(item.methods);
+          const hasNonStandard = groups.some((g) => g.key !== 'standard');
+          if (!hasNonStandard) {
+            return item.methods.map((methodItem) => this._methodTemplate(item, methodItem));
+          }
+          return groups.map((g) => html`
+            <span class="op-group-label" style="${this._computeMethodPadding(item.indent, this.indentSize)}">${g.label}</span>
+            ${g.methods.map((methodItem) => this._methodTemplate(item, methodItem))}
+          `);
+        })()}
       </anypoint-collapse>`;
   }
 

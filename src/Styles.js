@@ -96,6 +96,14 @@ export default css`
     background-color: inherit;
   }
 
+  .op-group-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    opacity: 0.7;
+    margin: 4px 0;
+  }
+
   .list-item {
     display: block;
     position: relative;
