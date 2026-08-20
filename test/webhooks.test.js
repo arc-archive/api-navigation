@@ -1,5 +1,6 @@
 import { fixture, assert, nextFrame, html } from '@open-wc/testing';
 import '../api-navigation.js';
+import { AmfLoader } from './amf-loader.js';
 
 /* eslint-disable no-plusplus */
 
@@ -141,5 +142,34 @@ describe('<api-navigation> webhooks (OAS 3.1/3.2)', () => {
     const el = await modelFixture(noWebhooks);
     assert.isFalse(el.hasWebhooks, 'hasWebhooks is false');
     assert.isNull(el.shadowRoot.querySelector('section.webhooks'), 'no webhooks section');
+  });
+});
+
+/**
+ * Smoke test against the real generated model (`demo/oas31-webhooks`), not an
+ * inline hand-built one. Guards the `apiContract#webhooks` predicate contract
+ * end-to-end: a future generator change to the predicate would fail here even
+ * though the inline suite above would still pass.
+ */
+describe('<api-navigation> webhooks (generated model)', () => {
+  async function modelFixture(amf) {
+    const elm = await fixture(html`<api-navigation
+      endpointsOpened
+      webhooksOpened
+      .amf="${amf}"
+    ></api-navigation>`);
+    await nextFrame();
+    return elm;
+  }
+
+  [true, false].forEach((compact) => {
+    it(`renders the Webhooks section from the ${compact ? 'compact' : 'full'} model`, async () => {
+      const amf = await AmfLoader.load(compact, 'oas31-webhooks');
+      const element = await modelFixture(amf);
+      assert.isTrue(element.hasWebhooks, 'hasWebhooks is true');
+      assert.lengthOf(element._webhooks, 1, 'one webhook resolved');
+      const section = element.shadowRoot.querySelector('section.webhooks');
+      assert.ok(section, 'webhooks section is rendered');
+    });
   });
 });
