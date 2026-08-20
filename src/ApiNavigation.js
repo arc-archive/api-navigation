@@ -1140,10 +1140,32 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
       label,
       id,
       method,
+      kind: this._computeOperationKind(item),
       grpcStreamType,
       requestSchema,
       responseSchema,
     };
+  }
+
+  /**
+   * Groups an endpoint's operations by their OAS 3.2 `operationKind`.
+   * @param {MethodItem[]} methods List of method view-models for an endpoint
+   * @return {{label: string, methods: MethodItem[]}[]} Non-empty groups, in fixed order.
+   */
+  _groupMethodsByKind(methods) {
+    const buckets = { standard: [], query: [], additionalOperation: [] };
+    (methods || []).forEach((m) => {
+      const k = Object.prototype.hasOwnProperty.call(buckets, m.kind) ? m.kind : 'standard';
+      buckets[k].push(m);
+    });
+    const order = [
+      { key: 'standard', label: 'Operations' },
+      { key: 'query', label: 'Query' },
+      { key: 'additionalOperation', label: 'Additional operations' },
+    ];
+    return order
+      .filter((g) => buckets[g.key].length)
+      .map((g) => ({ key: g.key, label: g.label, methods: buckets[g.key] }));
   }
 
   /**
@@ -2132,9 +2154,17 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
         ?endpoint-opened="${isEndpointOpened}"
       >
         ${this._overviewTemplate(item)}
-        ${item.methods.map(methodItem =>
-          this._methodTemplate(item, methodItem)
-        )}
+        ${(() => {
+          const groups = this._groupMethodsByKind(item.methods);
+          const hasNonStandard = groups.some((g) => g.key !== 'standard');
+          if (!hasNonStandard) {
+            return item.methods.map((methodItem) => this._methodTemplate(item, methodItem));
+          }
+          return groups.map((g) => html`
+            <span class="op-group-label" style="${this._computeMethodPadding(item.indent, this.indentSize)}">${g.label}</span>
+            ${g.methods.map((methodItem) => this._methodTemplate(item, methodItem))}
+          `);
+        })()}
       </anypoint-collapse>`;
   }
 
