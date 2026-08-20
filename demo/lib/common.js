@@ -80,6 +80,7 @@ export class NavDemoPage extends DemoPage {
 
   _apiListTemplate() {
     return [
+      ['oas31-webhooks', 'OAS 3.1 Webhooks'],
       ['grpc-test', 'gRPC Test'],
       ['demo-api', 'Demo API'],
       ['agents-api', 'Agents API'],

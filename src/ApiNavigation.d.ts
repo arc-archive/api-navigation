@@ -162,6 +162,17 @@ export declare class ApiNavigation {
   endpointsOpened: boolean;
 
   /**
+   * Computed list of top-level webhook items in the API (OAS 3.1/3.2).
+   */
+  _webhooks: EndpointItem[];
+
+  /**
+   * Determines and changes state of webhooks panel.
+   * @attribute
+   */
+  webhooksOpened: boolean;
+
+  /**
    * If true, the element will not produce a ripple effect when interacted with via the pointer.
    * @attribute
    */
@@ -253,6 +264,11 @@ export declare class ApiNavigation {
    * true when `_endpoints` property is set with values
    */
   get hasEndpoints(): boolean;
+
+  /**
+   * true when `_webhooks` property is set with values
+   */
+  get hasWebhooks(): boolean;
   /**
    * True when summary should be rendered.
    * Summary should be rendered only when `summary` is set and
@@ -330,6 +346,15 @@ export declare class ApiNavigation {
   _traverseEncodes(model: object, target: TargetModel): void;
 
   /**
+   * Traverses the top-level `apiContract#webhooks` collection (OAS 3.1/3.2)
+   * and appends each webhook to a distinct `webhooks` section.
+   *
+   * @param model AMF model.
+   * @param target Target object where to put data.
+   */
+  _traverseWebhooks(model: object, target: TargetModel): void;
+
+  /**
    * Sort endpoints alphabetically based on path
    */
   _rearrangeEndpoints(endpoints: EndpointItem[]): EndpointItem[];
@@ -377,8 +402,11 @@ export declare class ApiNavigation {
    * This also iterates over methods to extract method data.
    *
    * @param item Endpoint item declaration
+   * @param target Target model to append to.
+   * @param collectionKey Target collection to push into (`endpoints` by
+   * default; `webhooks` for OAS 3.1/3.2 top-level webhooks).
    */
-  _appendEndpointItem(item: object, target: TargetModel): void;
+  _appendEndpointItem(item: object, target: TargetModel, collectionKey?: string): void;
 
   /**
    * Creates the view model for an operation.
@@ -537,6 +565,23 @@ export declare class ApiNavigation {
   _getFilteredEndpoints(): EndpointItem[]|undefined;
 
   /**
+   * Returns a list of webhooks to render, applying the same query filter used
+   * for endpoints.
+   *
+   * @returns Filtered list of webhooks
+   */
+  _getFilteredWebhooks(): EndpointItem[]|undefined;
+
+  /**
+   * Filters a list of endpoint-shaped items (endpoints or webhooks) by the
+   * current query.
+   *
+   * @param value Endpoint-shaped items to filter
+   * @returns Filtered list
+   */
+  _filterEndpointItems(value: EndpointItem[]): EndpointItem[]|undefined;
+
+  /**
    * Closes all `iron-collapse` elements
    */
   _closeCollapses(): void;
@@ -617,6 +662,11 @@ export declare class ApiNavigation {
   _endpointsTemplate(): TemplateResult|string;
   _endpointTemplate(item: EndpointItem): TemplateResult;
   _methodTemplate(endpointItem: EndpointItem, methodItem: MethodItem): TemplateResult;
+
+  /**
+   * Renders a template for the top-level webhooks list (OAS 3.1/3.2).
+   */
+  _webhooksTemplate(): TemplateResult|string;
 
   /**
    * Renders a template for documentation list.
