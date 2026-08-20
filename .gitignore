@@ -66,5 +66,3 @@ coverage
 
 !/demo/grpc-test.json
 !/demo/grpc-test-compact.json
-!/demo/oas31-webhooks.json
-!/demo/oas31-webhooks-compact.json
