@@ -505,6 +505,7 @@ export class ApiNavigation extends AmfHelperMixin(LitElement) {
     this._updatedOpenedOperations = true;
     this.noOverview = false;
     this.renderFullPaths = false;
+    this.webhooksOpened = false;
 
     this._navigationChangeHandler = this._navigationChangeHandler.bind(this);
     this._focusHandler = this._focusHandler.bind(this);
